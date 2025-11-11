@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Campaign } from '../../types';
 import { getBudgetSplit } from '../../services/geminiService';
@@ -11,10 +10,11 @@ interface Props {
   setCampaign: (campaign: Campaign) => void;
   onNext: () => void;
   onBack: () => void;
+  error: string | null;
   setError: (error: string | null) => void;
 }
 
-const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, setError }) => {
+const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchBudgetSplit = useCallback(async () => {
@@ -99,6 +99,17 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
 
       {isLoading ? (
         <Loader text="Strategizing budget allocation..." />
+      ) : error && !budgetIsSet ? (
+        <div className="text-center p-8">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-red-600 mt-4">Budget Allocation Failed</h3>
+            <p className="text-slate-500 mt-2 mb-6">{error}</p>
+            <Button onClick={fetchBudgetSplit} isLoading={isLoading}>
+                Try Again
+            </Button>
+        </div>
       ) : (
         <div className="space-y-6">
           <div>

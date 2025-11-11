@@ -10,10 +10,11 @@ interface Props {
   setCampaign: (campaign: Campaign) => void;
   onNext: () => void;
   onBack: () => void;
+  error: string | null;
   setError: (error: string | null) => void;
 }
 
-const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, setError }) => {
+const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSegments = useCallback(async () => {
@@ -39,6 +40,8 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const hasSegments = campaign.audienceSegments.length > 0;
+
   return (
     <div>
       <h2 className="text-xl font-bold mb-1 text-slate-800 text-center">Target Audience Segments</h2>
@@ -46,6 +49,17 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       
       {isLoading ? (
         <Loader text="Analyzing market and identifying audience segments..." />
+      ) : error && !hasSegments ? (
+        <Card className="text-center p-8 max-w-md mx-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="text-lg font-semibold text-red-600 mt-4">Failed to Get Segments</h3>
+            <p className="text-slate-500 mt-2 mb-6">{error}</p>
+            <Button onClick={fetchSegments} isLoading={isLoading}>
+                Try Again
+            </Button>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {campaign.audienceSegments.map((segment, index) => (
@@ -67,7 +81,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext} disabled={isLoading || campaign.audienceSegments.length === 0}>
+        <Button onClick={onNext} disabled={isLoading || !hasSegments}>
           Generate Creatives
         </Button>
       </div>
