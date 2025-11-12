@@ -15,7 +15,8 @@ export const getAudienceSegments = async (
   landingPageUrl: string,
   targetingGuidelines?: string,
   brandGuidelines?: string,
-  supportingDocuments?: SupportingDocument[]
+  supportingDocuments?: SupportingDocument[],
+  productImage?: SupportingDocument
 ): Promise<AudienceSegment[]> => {
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
@@ -25,7 +26,9 @@ export const getAudienceSegments = async (
     1. A short, descriptive name.
     2. A detailed description of the segment's demographics and psychographics.
     3. A list of their key motivations for banking products.
-    4. A creative, detailed prompt for generating a compelling ad image that is visually descriptive, culturally relevant to ${country}, and emotionally resonant.
+    4. A creative, detailed prompt for generating a compelling ad image (the 'imagePrompt'). This image prompt must be visually descriptive, culturally relevant to ${country}, and emotionally resonant.
+    IMPORTANT: The image prompt must NOT depict any specific real-world products or brand logos unless a product image is provided below or they are explicitly mentioned in the brand guidelines. Instead, use generic representations (e.g., a generic credit card, not a Visa).
+    ${productImage ? 'A product image has been provided. The imagePrompt for each segment should describe a scene that naturally features the provided product.' : 'Since no specific product image is provided, the imagePrompt should not attempt to render a specific product.'}
     5. A separate, short prompt for generating a concise and compelling mobile push notification text for that segment.
   `;
 
@@ -36,12 +39,29 @@ export const getAudienceSegments = async (
   if (brandGuidelines) {
     prompt += `\n\nAdditionally, adhere to these brand guidelines for all generated content and prompts:\n${brandGuidelines}`;
   }
-
+  
+  const contextInstructions: string[] = [];
+  if (productImage) {
+      contextInstructions.push("a product image");
+  }
   if (supportingDocuments && supportingDocuments.length > 0) {
-    prompt += `\n\nUse the content of the attached document(s) as context and reference for your analysis.`;
+      contextInstructions.push("the attached document(s)");
+  }
+
+  if (contextInstructions.length > 0) {
+    prompt += `\n\nUse the content of ${contextInstructions.join(' and ')} as context and reference for your analysis.`;
   }
 
   const parts: Part[] = [{ text: prompt }];
+  
+  if (productImage) {
+    parts.push({
+      inlineData: {
+        mimeType: productImage.mimeType,
+        data: productImage.data,
+      },
+    });
+  }
 
   if (supportingDocuments) {
     for (const doc of supportingDocuments) {
@@ -97,7 +117,7 @@ export const getAudienceSegments = async (
   }
 };
 
-export const generateImagenImage = async (prompt: string, aspectRatio: '9:16' | '16:9'): Promise<{ base64: string; mimeType: string }> => {
+export const generateImagenImage = async (prompt: string, aspectRatio: '9:16' | '16:9' | '1:1'): Promise<{ base64: string; mimeType: string }> => {
   try {
     const ai = getAiClient();
     const response = await ai.models.generateImages({
@@ -118,6 +138,36 @@ export const generateImagenImage = async (prompt: string, aspectRatio: '9:16' | 
   } catch (error) {
     console.error(`Error generating image with aspect ratio ${aspectRatio}:`, error);
     throw new Error('Failed to generate image. Please try a different prompt.');
+  }
+};
+
+export const generateImageFromProduct = async (
+  productImage: SupportingDocument, 
+  prompt: string,
+  aspectRatio: '16:9' | '9:16' | '1:1'
+): Promise<{ base64: string; mimeType: string }> => {
+  const imagePart = {
+    inlineData: { data: productImage.data, mimeType: productImage.mimeType },
+  };
+  const textPart = { text: `Using the provided product image, create a new photorealistic image that places the product in the following scene: "${prompt}". The final generated image must have a ${aspectRatio} aspect ratio. Do not add any text or logos to the image that were not in the original product image.` };
+
+  try {
+    const response = await runGenerateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { parts: [imagePart, textPart] },
+      config: {
+        responseModalities: [Modality.IMAGE],
+      },
+    });
+
+    const part = response.candidates?.[0]?.content?.parts?.[0];
+    if (part?.inlineData) {
+      return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
+    }
+    throw new Error('No image data received from API for product image generation.');
+  } catch (error) {
+    console.error('Error generating image from product:', error);
+    throw new Error('Failed to generate image from product. The model may not have been able to fulfill the request.');
   }
 };
 

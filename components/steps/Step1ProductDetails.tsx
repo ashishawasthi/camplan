@@ -9,6 +9,7 @@ interface Props {
 
 const COUNTRIES = ['Singapore', 'Hong Kong', 'India', 'Indonesia', 'Taiwan'];
 const SUPPORTED_FILE_TYPES = "image/*,text/plain,text/markdown,.md,.txt,application/pdf";
+const SUPPORTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
 
 
 const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
@@ -36,9 +37,12 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
   const [targetingGuidelines, setTargetingGuidelines] = useState('');
   const [brandGuidelines, setBrandGuidelines] = useState('');
   const [performanceGuidelines, setPerformanceGuidelines] = useState('');
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const productImageInputRef = useRef<HTMLInputElement>(null);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -50,6 +54,19 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
     setSelectedFiles(prevFiles => prevFiles.filter(file => file !== fileToRemove));
   };
   
+  const handleProductImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setProductImageFile(event.target.files[0]);
+    }
+  };
+  
+  const removeProductImage = () => {
+    setProductImageFile(null);
+    if (productImageInputRef.current) {
+      productImageInputRef.current.value = "";
+    }
+  };
+
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -71,6 +88,15 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
             data: await fileToBase64(file),
           }))
         );
+        
+        let productImage: SupportingDocument | undefined = undefined;
+        if (productImageFile) {
+          productImage = {
+            name: productImageFile.name,
+            mimeType: productImageFile.type,
+            data: await fileToBase64(productImageFile),
+          };
+        }
 
         onNext({
           campaignName,
@@ -79,6 +105,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
           endDate,
           landingPageUrl: landingPageUrl,
           totalBudget: parseFloat(totalBudget),
+          productImage,
           targetingGuidelines: targetingGuidelines || undefined,
           brandGuidelines: brandGuidelines || undefined,
           performanceGuidelines: performanceGuidelines || undefined,
@@ -194,10 +221,10 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
         
         {/* -- Optional Context -- */}
         <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
-            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Guidelines (optional)</h3>
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Guidelines & Context (Optional)</h3>
             <div>
               <label htmlFor="targetingGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Targeting Guidelines (for audience creation)
+                Targeting Guidelines
               </label>
               <textarea
                 id="targetingGuidelines"
@@ -210,7 +237,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
             </div>
             <div>
               <label htmlFor="brandGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Brand Guidelines (for creative generation)
+                Brand Guidelines
               </label>
               <textarea
                 id="brandGuidelines"
@@ -223,7 +250,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
             </div>
             <div>
               <label htmlFor="performanceGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Spend Guidelines (for budget strategy)
+                Spend Guidelines
               </label>
               <textarea
                 id="performanceGuidelines"
@@ -234,15 +261,43 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                 placeholder={`e.g.,\n- Primary KPI is new account sign-ups.\n- Prioritize segments with high engagement on Instagram.\n- Allocate more budget towards the end of the campaign period.`}
               />
             </div>
+             <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Product Image
+                </label>
+                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Upload an image of your product to feature it in the generated ad creatives.</p>
+                {productImageFile ? (
+                    <div className="mt-2 relative w-48">
+                        <img src={URL.createObjectURL(productImageFile)} alt="Product preview" className="w-full rounded-md shadow-sm"/>
+                        <button type="button" onClick={removeProductImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center font-bold text-sm">&times;</button>
+                    </div>
+                ) : (
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
+                        <div className="space-y-1 text-center">
+                            <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <div className="flex text-sm text-slate-600 dark:text-slate-400">
+                                <button type="button" onClick={() => productImageInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                <span>Upload an image</span>
+                                </button>
+                                <input ref={productImageInputRef} id="product-image-upload" name="product-image-upload" type="file" className="sr-only" onChange={handleProductImageChange} accept={SUPPORTED_IMAGE_TYPES} />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG up to 10MB</p>
+                        </div>
+                    </div>
+                )}
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Supporting Images/Documents
+                Supporting Documents
               </label>
+               <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Provide any extra documents (e.g., creative briefs, product descriptions) for context.</p>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
                 <div className="space-y-1 text-center">
-                   <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                   <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                   <div className="flex text-sm text-slate-600 dark:text-slate-400">
                     <button type="button" onClick={() => fileInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
                       <span>Upload files</span>
@@ -250,7 +305,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                     <input ref={fileInputRef} id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept={SUPPORTED_FILE_TYPES} />
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG, TXT, MD, etc.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-500">PDF, TXT, MD, images etc.</p>
                 </div>
               </div>
                {selectedFiles.length > 0 && (

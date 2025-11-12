@@ -4,7 +4,7 @@ import Button from './common/Button';
 import { editImage } from '../services/geminiService';
 import { SparklesIcon } from './icons/SparklesIcon';
 
-type PreviewMode = 'desktop' | 'mobile';
+type PreviewMode = 'website' | 'square';
 interface Props {
   creative: Creative;
   imageKey: PreviewMode;
@@ -12,6 +12,11 @@ interface Props {
   onSave: (creative: Creative) => void;
   setError: (error: string | null) => void;
 }
+
+const displayNames: Record<PreviewMode, string> = {
+  website: 'Hero',
+  square: 'Square',
+};
 
 const ImageEditorModal: React.FC<Props> = ({ creative, imageKey, onClose, onSave, setError }) => {
   const [prompt, setPrompt] = useState('');
@@ -53,7 +58,7 @@ const ImageEditorModal: React.FC<Props> = ({ creative, imageKey, onClose, onSave
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Edit {imageKey.charAt(0).toUpperCase() + imageKey.slice(1)} Image</h2>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Edit {displayNames[imageKey]}</h2>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
           </div>
 

@@ -32,7 +32,8 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         campaign.landingPageUrl,
         campaign.targetingGuidelines,
         campaign.brandGuidelines,
-        campaign.supportingDocuments
+        campaign.supportingDocuments,
+        campaign.productImage
       );
       setCampaign({ ...campaign, audienceSegments: segments });
     } catch (err) {
@@ -108,7 +109,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
                 value={segment.description}
                 onChange={(e) => handleDescriptionChange(index, e.target.value)}
                 className="text-sm text-slate-600 dark:text-slate-300 mt-2 flex-grow bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 w-full resize-none"
-                rows={4}
+                rows={6}
                 aria-label={`Description for ${segment.name}`}
               />
               

@@ -15,8 +15,8 @@ export interface Creative {
   imagePrompt: string;
   notificationText: string;
   imageUrls: {
-    mobile: string; // base64 data URI
-    desktop: string; // base64 data URI
+    square: string; // 1080x1080, base64 data URI
+    website: string; // 1920x1080, base64 data URI
   };
   mimeType: string;
   isGenerating?: boolean;
@@ -41,6 +41,7 @@ export interface Campaign {
   landingPageUrl: string;
   totalBudget: number;
   audienceSegments: AudienceSegment[];
+  productImage?: SupportingDocument;
   targetingGuidelines?: string;
   brandGuidelines?: string;
   performanceGuidelines?: string;
