@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from '@google/genai';
-import { AudienceSegment } from '../types';
+import { AudienceSegment, SupportingDocument } from '../types';
 
 if (!process.env.API_KEY) {
   console.warn("API_KEY environment variable not set. Using a placeholder. Please provide a valid API key for the application to function.");
@@ -7,24 +7,49 @@ if (!process.env.API_KEY) {
 
 const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY ?? 'MISSING_API_KEY' });
 
+type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
+
 export const getAudienceSegments = async (
   campaignName: string,
   totalBudget: number,
   durationDays: number,
-  country: string
+  country: string,
+  audienceInstructions?: string,
+  supportingDocuments?: SupportingDocument[]
 ): Promise<AudienceSegment[]> => {
   const ai = getAiClient();
-  const prompt = `
+  let prompt = `
     As a marketing expert for a consumer bank in ${country}, identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a total budget of $${totalBudget} and will run for ${durationDays} days.
     For each segment, provide a name, a detailed description, a list of key motivations, and a creative, detailed prompt for generating a compelling ad image.
     The image prompt should be visually descriptive, culturally relevant to ${country}, and emotionally resonant with the target segment.
   `;
 
+  if (audienceInstructions) {
+    prompt += `\n\nAdditionally, follow these specific instructions when defining the audience:\n${audienceInstructions}`;
+  }
+
+  if (supportingDocuments && supportingDocuments.length > 0) {
+    prompt += `\n\nUse the content of the attached document(s) as context and reference for your analysis.`;
+  }
+
+  const parts: Part[] = [{ text: prompt }];
+
+  if (supportingDocuments) {
+    for (const doc of supportingDocuments) {
+      parts.push({
+        inlineData: {
+          mimeType: doc.mimeType,
+          data: doc.data,
+        },
+      });
+    }
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro',
-      contents: prompt,
+      contents: { parts },
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
@@ -50,7 +75,12 @@ export const getAudienceSegments = async (
     });
 
     const parsed = JSON.parse(response.text);
-    return parsed.segments;
+    // Add isSelected: true to each segment by default
+    const segmentsWithSelection: AudienceSegment[] = parsed.segments.map((segment: Omit<AudienceSegment, 'isSelected'>) => ({
+      ...segment,
+      isSelected: true,
+    }));
+    return segmentsWithSelection;
 
   } catch (error) {
     console.error("Error fetching audience segments:", error);

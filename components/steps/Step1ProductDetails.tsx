@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Campaign } from '../../types';
+import React, { useState, useRef } from 'react';
+import { Campaign, SupportingDocument } from '../../types';
 import Button from '../common/Button';
 import Card from '../common/Card';
 
@@ -8,24 +8,82 @@ interface Props {
 }
 
 const COUNTRIES = ['Singapore', 'Hong Kong', 'India', 'Indonesia', 'Taiwan'];
+const SUPPORTED_FILE_TYPES = "image/*,text/plain,text/markdown,.md,.txt,application/pdf";
+
 
 const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
+  const getInitialDates = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const twoMonthsLater = new Date(tomorrow);
+    twoMonthsLater.setMonth(twoMonthsLater.getMonth() + 2);
+
+    return {
+      start: tomorrow.toISOString().split('T')[0],
+      end: twoMonthsLater.toISOString().split('T')[0],
+    };
+  };
+  
+  const initialDates = getInitialDates();
+
   const [campaignName, setCampaignName] = useState('');
   const [country, setCountry] = useState(COUNTRIES[0]);
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(initialDates.start);
+  const [endDate, setEndDate] = useState(initialDates.end);
   const [totalBudget, setTotalBudget] = useState('');
+  const [audienceInstructions, setAudienceInstructions] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setSelectedFiles(prevFiles => [...prevFiles, ...Array.from(event.target.files!)]);
+    }
+  };
+
+  const removeFile = (fileToRemove: File) => {
+    setSelectedFiles(prevFiles => prevFiles.filter(file => file !== fileToRemove));
+  };
+  
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (campaignName && country && startDate && endDate && totalBudget) {
-      onNext({
-        campaignName,
-        country,
-        startDate,
-        endDate,
-        totalBudget: parseFloat(totalBudget),
-      });
+      setIsProcessing(true);
+      try {
+        const supportingDocuments: SupportingDocument[] = await Promise.all(
+          selectedFiles.map(async (file) => ({
+            name: file.name,
+            mimeType: file.type,
+            data: await fileToBase64(file),
+          }))
+        );
+
+        onNext({
+          campaignName,
+          country,
+          startDate,
+          endDate,
+          totalBudget: parseFloat(totalBudget),
+          audienceInstructions: audienceInstructions || undefined,
+          supportingDocuments: supportingDocuments.length > 0 ? supportingDocuments : undefined,
+        });
+      } catch (error) {
+        console.error("Error processing files:", error);
+        // Here you might want to set an error state to show the user
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -34,21 +92,23 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
       <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Campaign Details</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Let's start by defining the basics of your new campaign.</p>
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* -- Basic Details -- */}
+        <div>
+          <label htmlFor="campaignName" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Campaign Name
+          </label>
+          <input
+            type="text"
+            id="campaignName"
+            value={campaignName}
+            onChange={(e) => setCampaignName(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+            placeholder="e.g., '5% cashback on selected restaurents during holiday season'"
+            required
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="campaignName" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Campaign Name
-            </label>
-            <input
-              type="text"
-              id="campaignName"
-              value={campaignName}
-              onChange={(e) => setCampaignName(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
-              placeholder="e.g., 'Summer Savings Bonanza'"
-              required
-            />
-          </div>
           <div>
             <label htmlFor="country" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Country
@@ -63,7 +123,23 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
               {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
+          <div>
+            <label htmlFor="totalBudget" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Total Budget (S$)
+            </label>
+            <input
+              type="number"
+              id="totalBudget"
+              value={totalBudget}
+              onChange={(e) => setTotalBudget(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+              placeholder="e.g., 50000"
+              required
+              min="100"
+            />
+          </div>
         </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="startDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -94,24 +170,58 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
             />
           </div>
         </div>
-        <div>
-          <label htmlFor="totalBudget" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Total Budget ($)
-          </label>
-          <input
-            type="number"
-            id="totalBudget"
-            value={totalBudget}
-            onChange={(e) => setTotalBudget(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
-            placeholder="e.g., 50000"
-            required
-            min="100"
-          />
+        
+        {/* -- Optional Context -- */}
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Optional ( to customize Audience Targeting)</h3>
+            <div>
+              <label htmlFor="audienceInstructions" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Instructions for Defining Audience
+              </label>
+              <textarea
+                id="audienceInstructions"
+                rows={4}
+                value={audienceInstructions}
+                onChange={(e) => setAudienceInstructions(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder={`e.g.,\n- Focus on users interested in sustainable investing.\n- Exclude existing premium account holders.\n- Prioritize segments in urban areas.`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Supporting Images/Documents
+              </label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
+                <div className="space-y-1 text-center">
+                   <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div className="flex text-sm text-slate-600 dark:text-slate-400">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                      <span>Upload files</span>
+                    </button>
+                    <input ref={fileInputRef} id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept={SUPPORTED_FILE_TYPES} />
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG, TXT, MD, etc.</p>
+                </div>
+              </div>
+               {selectedFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between text-sm bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md">
+                       <span className="text-slate-700 dark:text-slate-300 truncate pr-2">{file.name}</span>
+                       <button type="button" onClick={() => removeFile(file)} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
         </div>
+
         <div className="flex justify-end">
-          <Button type="submit">
-            Define Audience
+          <Button type="submit" isLoading={isProcessing}>
+            {isProcessing ? 'Processing...' : 'Define Audience'}
           </Button>
         </div>
       </form>

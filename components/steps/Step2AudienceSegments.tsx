@@ -24,7 +24,14 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       const start = new Date(campaign.startDate);
       const end = new Date(campaign.endDate);
       const durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
-      const segments = await getAudienceSegments(campaign.campaignName, campaign.totalBudget, durationDays, campaign.country);
+      const segments = await getAudienceSegments(
+        campaign.campaignName, 
+        campaign.totalBudget, 
+        durationDays, 
+        campaign.country,
+        campaign.audienceInstructions,
+        campaign.supportingDocuments
+      );
       setCampaign({ ...campaign, audienceSegments: segments });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -40,12 +47,32 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleToggleSegment = (index: number) => {
+    const newSegments = [...campaign.audienceSegments];
+    newSegments[index] = { ...newSegments[index], isSelected: !newSegments[index].isSelected };
+    setCampaign({ ...campaign, audienceSegments: newSegments });
+  };
+
+  const handleDescriptionChange = (index: number, newDescription: string) => {
+      const newSegments = [...campaign.audienceSegments];
+      newSegments[index] = { ...newSegments[index], description: newDescription };
+      setCampaign({ ...campaign, audienceSegments: newSegments });
+  };
+  
+  const handleNextWithSelection = () => {
+    // We update the campaign state with only the selected segments before moving on
+    const selectedSegments = campaign.audienceSegments.filter(s => s.isSelected);
+    setCampaign({ ...campaign, audienceSegments: selectedSegments });
+    onNext();
+  };
+
   const hasSegments = campaign.audienceSegments.length > 0;
+  const isAnySegmentSelected = campaign.audienceSegments.some(s => s.isSelected);
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-1 text-slate-800 text-center">Target Audience Segments</h2>
-      <p className="text-sm text-slate-500 mb-6 text-center">Here are the audience segments AI has identified for your campaign in <span className="font-semibold">{campaign.country}</span>.</p>
+      <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Target Audience Segments</h2>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 text-center">Review, edit, and select the segments you want to target for this campaign.</p>
       
       {isLoading ? (
         <Loader text="Analyzing market and identifying audience segments..." />
@@ -64,11 +91,28 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {campaign.audienceSegments.map((segment, index) => (
             <Card key={index} className="flex flex-col">
-              <h3 className="text-lg font-bold text-indigo-700">{segment.name}</h3>
-              <p className="text-sm text-slate-600 mt-2 flex-grow">{segment.description}</p>
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 pr-2">{segment.name}</h3>
+                <input
+                  type="checkbox"
+                  checked={segment.isSelected ?? false}
+                  onChange={() => handleToggleSegment(index)}
+                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  aria-label={`Select segment ${segment.name}`}
+                />
+              </div>
+
+              <textarea
+                value={segment.description}
+                onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                className="text-sm text-slate-600 dark:text-slate-300 mt-2 flex-grow bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 w-full resize-none"
+                rows={4}
+                aria-label={`Description for ${segment.name}`}
+              />
+              
               <div className="mt-4">
-                <h4 className="text-sm font-semibold text-slate-800">Key Motivations:</h4>
-                <ul className="list-disc list-inside text-sm text-slate-500 mt-1 space-y-1">
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Key Motivations:</h4>
+                <ul className="list-disc list-inside text-sm text-slate-500 dark:text-slate-400 mt-1 space-y-1">
                   {segment.keyMotivations.map((m, i) => <li key={i}>{m}</li>)}
                 </ul>
               </div>
@@ -81,7 +125,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext} disabled={isLoading || !hasSegments}>
+        <Button onClick={handleNextWithSelection} disabled={isLoading || !isAnySegmentSelected}>
           Generate Creatives
         </Button>
       </div>
