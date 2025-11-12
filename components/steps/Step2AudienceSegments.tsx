@@ -29,7 +29,9 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         campaign.totalBudget, 
         durationDays, 
         campaign.country,
-        campaign.audienceInstructions,
+        campaign.landingPageUrl,
+        campaign.targetingGuidelines,
+        campaign.brandGuidelines,
         campaign.supportingDocuments
       );
       setCampaign({ ...campaign, audienceSegments: segments });

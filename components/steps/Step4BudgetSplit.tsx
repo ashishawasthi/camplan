@@ -25,7 +25,9 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
         campaign.audienceSegments, 
         campaign.totalBudget,
         campaign.country,
-        campaign.campaignName
+        campaign.campaignName,
+        campaign.landingPageUrl,
+        campaign.performanceGuidelines
       );
 
       const newCampaign = { ...campaign, budgetAnalysis: analysis, budgetSources: sources };
@@ -46,7 +48,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
       });
       
       // Normalize segment budgets if total allocated doesn't match total budget
-      if (totalAllocated > 0 && totalAllocated !== campaign.totalBudget) {
+      if (totalAllocated > 0 && Math.abs(totalAllocated - campaign.totalBudget) > 1) { // Allow for rounding errors
         const ratio = campaign.totalBudget / totalAllocated;
         let runningTotal = 0;
         updatedSegments.forEach((segment, index) => {

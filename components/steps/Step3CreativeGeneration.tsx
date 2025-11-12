@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Campaign, Creative } from '../../types';
-import { generateImage } from '../../services/geminiService';
+import { generateImagenImage, generateNotificationText } from '../../services/geminiService';
 import Button from '../common/Button';
 import Card from '../common/Card';
 import ImageEditorModal from '../ImageEditorModal';
@@ -15,10 +14,15 @@ interface Props {
   setError: (error: string | null) => void;
 }
 
-const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, setError }) => {
-  const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
+type PreviewMode = 'desktop' | 'mobile';
 
-  const handleGenerateImage = async (segmentIndex: number) => {
+const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, setError }) => {
+  const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative, imageKey: PreviewMode } | null>(null);
+  const [activePreviews, setActivePreviews] = useState<{ [key: number]: PreviewMode }>(
+    () => Object.fromEntries(campaign.audienceSegments.map((_, i) => [i, 'desktop']))
+  );
+  
+  const handleGenerateCreative = async (segmentIndex: number) => {
     setError(null);
     const segment = campaign.audienceSegments[segmentIndex];
     
@@ -28,12 +32,21 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     setCampaign(newCampaign);
 
     try {
-      const { base64, mimeType } = await generateImage(segment.imagePrompt);
+      const [desktopResult, mobileResult, notificationText] = await Promise.all([
+        generateImagenImage(segment.imagePrompt, '16:9'),
+        generateImagenImage(segment.imagePrompt, '9:16'),
+        generateNotificationText(segment.notificationTextPrompt, campaign.landingPageUrl, campaign.brandGuidelines)
+      ]);
+      
       const newCreative: Creative = {
         id: new Date().toISOString(),
-        prompt: segment.imagePrompt,
-        imageUrl: `data:${mimeType};base64,${base64}`,
-        mimeType,
+        imagePrompt: segment.imagePrompt,
+        notificationText,
+        imageUrls: {
+          desktop: `data:${desktopResult.mimeType};base64,${desktopResult.base64}`,
+          mobile: `data:${mobileResult.mimeType};base64,${mobileResult.base64}`,
+        },
+        mimeType: desktopResult.mimeType,
         isGenerating: false,
       };
       
@@ -55,6 +68,10 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     setCampaign(newCampaign);
     setEditingCreative(null);
   };
+  
+  const setActivePreview = (index: number, mode: PreviewMode) => {
+    setActivePreviews(prev => ({ ...prev, [index]: mode }));
+  };
 
   const allCreativesGenerated = campaign.audienceSegments.every(s => s.creative && !s.creative.isGenerating);
 
@@ -66,32 +83,47 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
       <div className="space-y-8">
         {campaign.audienceSegments.map((segment, index) => (
           <Card key={index}>
-            <h3 className="text-lg font-bold text-indigo-700">{segment.name}</h3>
-            <p className="text-sm text-slate-500 mt-1 mb-4 italic">"{segment.imagePrompt}"</p>
+            <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400">{segment.name}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-4 italic">Image Prompt: "{segment.imagePrompt}"</p>
             
-            <div className="w-full aspect-video bg-slate-100 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-200">
+            <div className="w-full aspect-video bg-slate-100 dark:bg-slate-800/50 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-600 relative">
               {segment.creative?.isGenerating ? (
                  <div className="flex flex-col items-center">
                     <SparklesIcon className="h-8 w-8 text-indigo-500 animate-pulse" />
-                    <p className="mt-2 text-sm text-slate-500">Generating image...</p>
+                    <p className="mt-2 text-sm text-slate-500">Generating creatives...</p>
                  </div>
-              ) : segment.creative?.imageUrl ? (
-                <img src={segment.creative.imageUrl} alt={segment.name} className="object-contain h-full w-full rounded-md" />
+              ) : segment.creative?.imageUrls ? (
+                <>
+                  <img src={segment.creative.imageUrls[activePreviews[index]]} alt={`${segment.name} - ${activePreviews[index]} preview`} className="object-contain h-full w-full rounded-md" />
+                  <div className="absolute top-2 right-2 bg-black/50 p-1 rounded-md flex gap-1">
+                    <button onClick={() => setActivePreview(index, 'desktop')} className={`px-2 py-1 text-xs rounded ${activePreviews[index] === 'desktop' ? 'bg-indigo-600 text-white' : 'bg-white/80 text-black'}`}>Desktop</button>
+                    <button onClick={() => setActivePreview(index, 'mobile')} className={`px-2 py-1 text-xs rounded ${activePreviews[index] === 'mobile' ? 'bg-indigo-600 text-white' : 'bg-white/80 text-black'}`}>Mobile</button>
+                  </div>
+                </>
               ) : (
                 <Button 
-                  onClick={() => handleGenerateImage(index)}
+                  onClick={() => handleGenerateCreative(index)}
                   isLoading={segment.creative?.isGenerating}
                   variant="secondary"
                 >
                   <SparklesIcon className="mr-2 h-5 w-5" />
-                  Generate Image
+                  Generate Creatives
                 </Button>
               )}
             </div>
-            {segment.creative?.imageUrl && (
+
+            {segment.creative?.notificationText && (
+                <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Push Notification Text</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">"{segment.creative.notificationText}"</p>
+                </div>
+            )}
+
+
+            {segment.creative?.imageUrls && (
               <div className="mt-4 flex gap-2 justify-end">
-                <Button variant="ghost" onClick={() => handleGenerateImage(index)}>Regenerate</Button>
-                <Button variant="secondary" onClick={() => setEditingCreative({ segmentIndex: index, creative: segment.creative! })}>Edit Image</Button>
+                <Button variant="ghost" onClick={() => handleGenerateCreative(index)}>Regenerate All</Button>
+                <Button variant="secondary" onClick={() => setEditingCreative({ segmentIndex: index, creative: segment.creative!, imageKey: activePreviews[index] })}>Edit {activePreviews[index]} Image</Button>
               </div>
             )}
           </Card>
@@ -110,6 +142,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
       {editingCreative && (
         <ImageEditorModal
           creative={editingCreative.creative}
+          imageKey={editingCreative.imageKey}
           onClose={() => setEditingCreative(null)}
           onSave={(newCreative) => handleSaveEdit(editingCreative.segmentIndex, newCreative)}
           setError={setError}

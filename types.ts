@@ -3,6 +3,7 @@ export interface AudienceSegment {
   description: string;
   keyMotivations: string[];
   imagePrompt: string;
+  notificationTextPrompt: string;
   isSelected?: boolean;
   creative?: Creative;
   budget?: number;
@@ -11,11 +12,14 @@ export interface AudienceSegment {
 
 export interface Creative {
   id: string;
-  prompt: string;
-  imageUrl: string; // base64 data URI
+  imagePrompt: string;
+  notificationText: string;
+  imageUrls: {
+    mobile: string; // base64 data URI
+    desktop: string; // base64 data URI
+  };
   mimeType: string;
   isGenerating?: boolean;
-  isEditing?: boolean;
 }
 
 export interface SupportingDocument {
@@ -34,9 +38,12 @@ export interface Campaign {
   country: string;
   startDate: string;
   endDate: string;
+  landingPageUrl: string;
   totalBudget: number;
   audienceSegments: AudienceSegment[];
-  audienceInstructions?: string;
+  targetingGuidelines?: string;
+  brandGuidelines?: string;
+  performanceGuidelines?: string;
   supportingDocuments?: SupportingDocument[];
   budgetAnalysis?: string;
   budgetSources?: GroundingSource[];

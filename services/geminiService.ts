@@ -1,26 +1,40 @@
-import { Type, Modality } from '@google/genai';
+import { GoogleGenAI, Type, Modality } from '@google/genai';
 import { AudienceSegment, SupportingDocument, GroundingSource } from '../types';
 import { runGenerateContent } from './geminiClient';
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY ?? 'MISSING_API_KEY' });
+
 
 export const getAudienceSegments = async (
   campaignName: string,
   totalBudget: number,
   durationDays: number,
   country: string,
-  audienceInstructions?: string,
+  landingPageUrl: string,
+  targetingGuidelines?: string,
+  brandGuidelines?: string,
   supportingDocuments?: SupportingDocument[]
 ): Promise<AudienceSegment[]> => {
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a total budget of $${totalBudget} and will run for ${durationDays} days.
-    For each segment, provide a name, a detailed description, a list of key motivations, and a creative, detailed prompt for generating a compelling ad image.
-    The image prompt should be visually descriptive, culturally relevant to ${country}, and emotionally resonant with the target segment.
+    The campaign's landing page, which contains the core offer and details, is: ${landingPageUrl}. Your suggestions must be strongly aligned with the content of this page.
+    For each segment, provide:
+    1. A short, descriptive name.
+    2. A detailed description of the segment's demographics and psychographics.
+    3. A list of their key motivations for banking products.
+    4. A creative, detailed prompt for generating a compelling ad image that is visually descriptive, culturally relevant to ${country}, and emotionally resonant.
+    5. A separate, short prompt for generating a concise and compelling mobile push notification text for that segment.
   `;
 
-  if (audienceInstructions) {
-    prompt += `\n\nAdditionally, follow these specific instructions when defining the audience:\n${audienceInstructions}`;
+  if (targetingGuidelines) {
+    prompt += `\n\nYour segmentation must be guided by these specific targeting guidelines:\n${targetingGuidelines}`;
+  }
+
+  if (brandGuidelines) {
+    prompt += `\n\nAdditionally, adhere to these brand guidelines for all generated content and prompts:\n${brandGuidelines}`;
   }
 
   if (supportingDocuments && supportingDocuments.length > 0) {
@@ -57,9 +71,10 @@ export const getAudienceSegments = async (
                   name: { type: Type.STRING },
                   description: { type: Type.STRING },
                   keyMotivations: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  imagePrompt: { type: Type.STRING }
+                  imagePrompt: { type: Type.STRING },
+                  notificationTextPrompt: { type: Type.STRING }
                 },
-                required: ['name', 'description', 'keyMotivations', 'imagePrompt']
+                required: ['name', 'description', 'keyMotivations', 'imagePrompt', 'notificationTextPrompt']
               }
             }
           },
@@ -82,26 +97,49 @@ export const getAudienceSegments = async (
   }
 };
 
-export const generateImage = async (prompt: string): Promise<{ base64: string; mimeType: string }> => {
+export const generateImagenImage = async (prompt: string, aspectRatio: '9:16' | '16:9'): Promise<{ base64: string; mimeType: string }> => {
   try {
-    const response = await runGenerateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: { parts: [{ text: prompt }] },
+    const ai = getAiClient();
+    const response = await ai.models.generateImages({
+      model: 'imagen-4.0-generate-001',
+      prompt,
       config: {
-        responseModalities: [Modality.IMAGE],
+        numberOfImages: 1,
+        outputMimeType: 'image/jpeg',
+        aspectRatio,
       },
     });
 
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData) {
-      return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
+    const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+    if (!base64ImageBytes) {
+      throw new Error('API did not return image bytes.');
     }
-    throw new Error('No image data received from API.');
+    return { base64: base64ImageBytes, mimeType: 'image/jpeg' };
   } catch (error) {
-    console.error('Error generating image:', error);
+    console.error(`Error generating image with aspect ratio ${aspectRatio}:`, error);
     throw new Error('Failed to generate image. Please try a different prompt.');
   }
 };
+
+export const generateNotificationText = async (prompt: string, landingPageUrl: string, brandGuidelines?: string): Promise<string> => {
+    let fullPrompt = `Generate a concise and compelling mobile push notification text based on the following creative direction: "${prompt}". The notification should entice users to visit the landing page: ${landingPageUrl}.`;
+    if (brandGuidelines) {
+      fullPrompt += `\n\nAdhere to these brand guidelines:\n${brandGuidelines}`;
+    }
+    fullPrompt += "\n\nThe notification should be short, engaging, and have a clear call to action. Return only the text of the notification, with no extra formatting or labels.";
+
+    try {
+      const response = await runGenerateContent({
+        model: 'gemini-2.5-flash',
+        contents: fullPrompt,
+      });
+      return response.text.trim().replace(/^"|"$/g, ''); // Trim and remove quotes
+    } catch (error) {
+      console.error("Error generating notification text:", error);
+      throw new Error("Failed to generate notification text.");
+    }
+};
+
 
 export const editImage = async (base64Image: string, mimeType: string, prompt: string): Promise<{ base64: string; mimeType: string }> => {
   const imagePart = {
@@ -133,21 +171,30 @@ export const getBudgetSplit = async (
   segments: AudienceSegment[], 
   totalBudget: number,
   country: string,
-  campaignName: string
+  campaignName: string,
+  landingPageUrl: string,
+  performanceGuidelines?: string
 ): Promise<{ 
   analysis: string; 
   splits: { segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[];
   sources: GroundingSource[];
 }> => {
   const segmentDetails = segments.map(s => `Segment "${s.name}": ${s.description}`).join('\n');
-  const prompt = `
+  let prompt = `
     As a digital marketing strategist for a consumer bank in ${country}, your task is to propose a budget allocation for an ad campaign titled "${campaignName}".
-    The total budget is $${totalBudget}. The target audience segments are:
+    The total budget is $${totalBudget}. The campaign directs users to this landing page: ${landingPageUrl}. The strategy should aim to drive relevant traffic to this page.
+    The target audience segments are:
     ${segmentDetails}
+  `;
 
+  if (performanceGuidelines) {
+    prompt += `\n\nCrucially, your strategy must be informed by these performance guidelines: ${performanceGuidelines}`;
+  }
+
+  prompt += `
     First, conduct a brief analysis of the current digital marketing landscape and consumer media consumption habits in ${country}, particularly for financial products. Use real-time search to gather recent data and trends. This analysis should justify your budget allocation strategy.
 
-    Second, based on your analysis, propose a strategic budget split. Allocate the total budget across the identified segments based on their potential ROI. Then, for each segment, break down their allocated budget across these paid media channels: Facebook, Instagram, Google (Search & Display), and TikTok.
+    Second, based on your analysis and the provided guidelines, propose a strategic budget split. Allocate the total budget across the identified segments based on their potential ROI. Then, for each segment, break down their allocated budget across these paid media channels: Facebook, Instagram, Google (Search & Display), and TikTok.
 
     Provide the output as a single JSON object with two keys: "analysis" and "budgetSplits".
     - The "analysis" key should contain your market analysis as a string.

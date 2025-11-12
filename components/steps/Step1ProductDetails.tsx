@@ -31,8 +31,11 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
   const [country, setCountry] = useState(COUNTRIES[0]);
   const [startDate, setStartDate] = useState(initialDates.start);
   const [endDate, setEndDate] = useState(initialDates.end);
+  const [landingPageUrl, setLandingPageUrl] = useState('');
   const [totalBudget, setTotalBudget] = useState('');
-  const [audienceInstructions, setAudienceInstructions] = useState('');
+  const [targetingGuidelines, setTargetingGuidelines] = useState('');
+  const [brandGuidelines, setBrandGuidelines] = useState('');
+  const [performanceGuidelines, setPerformanceGuidelines] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +61,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (campaignName && country && startDate && endDate && totalBudget) {
+    if (campaignName && country && startDate && endDate && totalBudget && landingPageUrl) {
       setIsProcessing(true);
       try {
         const supportingDocuments: SupportingDocument[] = await Promise.all(
@@ -74,8 +77,11 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
           country,
           startDate,
           endDate,
+          landingPageUrl: landingPageUrl,
           totalBudget: parseFloat(totalBudget),
-          audienceInstructions: audienceInstructions || undefined,
+          targetingGuidelines: targetingGuidelines || undefined,
+          brandGuidelines: brandGuidelines || undefined,
+          performanceGuidelines: performanceGuidelines || undefined,
           supportingDocuments: supportingDocuments.length > 0 ? supportingDocuments : undefined,
         });
       } catch (error) {
@@ -171,20 +177,61 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
           </div>
         </div>
         
+        <div>
+          <label htmlFor="landingPageUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            Landing Page URL
+          </label>
+          <input
+            type="url"
+            id="landingPageUrl"
+            value={landingPageUrl}
+            onChange={(e) => setLandingPageUrl(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+            placeholder="https://yourbank.com/promo/cashback-offer"
+            required
+          />
+        </div>
+        
         {/* -- Optional Context -- */}
         <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
-            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Optional ( to customize Audience Targeting)</h3>
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Guidelines (optional)</h3>
             <div>
-              <label htmlFor="audienceInstructions" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Instructions for Defining Audience
+              <label htmlFor="targetingGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Targeting Guidelines (for audience creation)
               </label>
               <textarea
-                id="audienceInstructions"
+                id="targetingGuidelines"
                 rows={4}
-                value={audienceInstructions}
-                onChange={(e) => setAudienceInstructions(e.target.value)}
+                value={targetingGuidelines}
+                onChange={(e) => setTargetingGuidelines(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
-                placeholder={`e.g.,\n- Focus on users interested in sustainable investing.\n- Exclude existing premium account holders.\n- Prioritize segments in urban areas.`}
+                placeholder={`e.g.,\n- Focus on young professionals aged 25-35.\n- Exclude existing customers who already have a credit card with us.\n- Prioritize users interested in travel and dining.`}
+              />
+            </div>
+            <div>
+              <label htmlFor="brandGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Brand Guidelines (for creative generation)
+              </label>
+              <textarea
+                id="brandGuidelines"
+                rows={4}
+                value={brandGuidelines}
+                onChange={(e) => setBrandGuidelines(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder={`e.g.,\n- Tone: friendly, reassuring, and professional.\n- Visuals: Use warm colors, avoid stock photos of models.\n- Exclude imagery related to gambling or alcohol.`}
+              />
+            </div>
+            <div>
+              <label htmlFor="performanceGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Spend Guidelines (for budget strategy)
+              </label>
+              <textarea
+                id="performanceGuidelines"
+                rows={4}
+                value={performanceGuidelines}
+                onChange={(e) => setPerformanceGuidelines(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder={`e.g.,\n- Primary KPI is new account sign-ups.\n- Prioritize segments with high engagement on Instagram.\n- Allocate more budget towards the end of the campaign period.`}
               />
             </div>
             <div>
