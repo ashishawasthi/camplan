@@ -8,7 +8,7 @@ interface Props {
 }
 
 const COUNTRIES = ['Singapore', 'Hong Kong', 'India', 'Indonesia', 'Taiwan'];
-const SUPPORTED_FILE_TYPES = "image/*,text/plain,text/markdown,.md,.txt,application/pdf";
+const SUPPORTED_FILE_TYPES = "image/jpeg,image/png,image/webp,application/pdf,text/plain,.txt";
 const SUPPORTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
 
 
@@ -305,7 +305,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                     <input ref={fileInputRef} id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept={SUPPORTED_FILE_TYPES} />
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">PDF, TXT, MD, images etc.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-500">JPG, PNG, WEBP, PDF, TXT</p>
                 </div>
               </div>
                {selectedFiles.length > 0 && (

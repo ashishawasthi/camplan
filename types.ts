@@ -8,16 +8,14 @@ export interface AudienceSegment {
   creative?: Creative;
   budget?: number;
   mediaSplit?: { channel: string; budget: number }[];
+  rationale?: string;
 }
 
 export interface Creative {
   id: string;
   imagePrompt: string;
   notificationText: string;
-  imageUrls: {
-    square: string; // 1080x1080, base64 data URI
-    website: string; // 1920x1080, base64 data URI
-  };
+  imageUrl: string; // 1024x1024, base64 data URI
   mimeType: string;
   isGenerating?: boolean;
 }
@@ -41,6 +39,7 @@ export interface Campaign {
   landingPageUrl: string;
   totalBudget: number;
   audienceSegments: AudienceSegment[];
+  segmentSources?: GroundingSource[];
   productImage?: SupportingDocument;
   targetingGuidelines?: string;
   brandGuidelines?: string;

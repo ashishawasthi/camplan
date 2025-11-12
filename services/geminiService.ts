@@ -17,19 +17,24 @@ export const getAudienceSegments = async (
   brandGuidelines?: string,
   supportingDocuments?: SupportingDocument[],
   productImage?: SupportingDocument
-): Promise<AudienceSegment[]> => {
+): Promise<{ segments: AudienceSegment[], sources: GroundingSource[] }> => {
   let prompt = `
-    As a marketing expert for a consumer bank in ${country}, identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
+    As a marketing expert for a consumer bank in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a total budget of $${totalBudget} and will run for ${durationDays} days.
-    The campaign's landing page, which contains the core offer and details, is: ${landingPageUrl}. Your suggestions must be strongly aligned with the content of this page.
-    For each segment, provide:
+    
+    First, use Google Search to research the current market for this type of product/service in ${country}. Look for consumer trends, competitor strategies, and relevant demographic/psychographic data.
+
+    Second, analyze the content of the campaign's landing page, which contains the core offer and details: ${landingPageUrl}.
+    
+    Based on your combined analysis of the search results and the landing page content, define each audience segment with the following properties:
     1. A short, descriptive name.
-    2. A detailed description of the segment's demographics and psychographics.
-    3. A list of their key motivations for banking products.
-    4. A creative, detailed prompt for generating a compelling ad image (the 'imagePrompt'). This image prompt must be visually descriptive, culturally relevant to ${country}, and emotionally resonant.
+    2. A detailed description of the segment's demographics, lifestyle, and psychographics.
+    3. A "rationale" explaining your reasoning. This rationale MUST explicitly reference specific facts, features, or language from the landing page content AND insights gathered from your web search to justify why this segment is a valuable target.
+    4. A list of their key motivations for banking products.
+    5. A creative, detailed prompt for generating a compelling ad image (the 'imagePrompt'). This image prompt must be visually descriptive, culturally relevant to ${country}, and emotionally resonant.
     IMPORTANT: The image prompt must NOT depict any specific real-world products or brand logos unless a product image is provided below or they are explicitly mentioned in the brand guidelines. Instead, use generic representations (e.g., a generic credit card, not a Visa).
     ${productImage ? 'A product image has been provided. The imagePrompt for each segment should describe a scene that naturally features the provided product.' : 'Since no specific product image is provided, the imagePrompt should not attempt to render a specific product.'}
-    5. A separate, short prompt for generating a concise and compelling mobile push notification text for that segment.
+    6. A separate, short prompt for generating a concise and compelling mobile push notification text for that segment.
   `;
 
   if (targetingGuidelines) {
@@ -78,6 +83,7 @@ export const getAudienceSegments = async (
     const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: { parts },
+      tools: [{googleSearch: {}}],
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
@@ -90,11 +96,15 @@ export const getAudienceSegments = async (
                 properties: {
                   name: { type: Type.STRING },
                   description: { type: Type.STRING },
+                  rationale: { 
+                    type: Type.STRING,
+                    description: "Justification for selecting this segment, citing landing page content and search results."
+                  },
                   keyMotivations: { type: Type.ARRAY, items: { type: Type.STRING } },
                   imagePrompt: { type: Type.STRING },
                   notificationTextPrompt: { type: Type.STRING }
                 },
-                required: ['name', 'description', 'keyMotivations', 'imagePrompt', 'notificationTextPrompt']
+                required: ['name', 'description', 'rationale', 'keyMotivations', 'imagePrompt', 'notificationTextPrompt']
               }
             }
           },
@@ -104,12 +114,23 @@ export const getAudienceSegments = async (
     });
 
     const parsed = JSON.parse(response.text);
-    // Add isSelected: true to each segment by default
     const segmentsWithSelection: AudienceSegment[] = parsed.segments.map((segment: Omit<AudienceSegment, 'isSelected'>) => ({
       ...segment,
       isSelected: true,
     }));
-    return segmentsWithSelection;
+
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+    const sources = groundingChunks
+      .filter(chunk => chunk.web && chunk.web.uri && chunk.web.title)
+      .map(chunk => ({
+          uri: chunk.web!.uri!,
+          title: chunk.web!.title!,
+      }))
+      .filter((source, index, self) => 
+        index === self.findIndex((s) => s.uri === source.uri)
+      );
+
+    return { segments: segmentsWithSelection, sources };
 
   } catch (error) {
     console.error("Error fetching audience segments:", error);
@@ -117,39 +138,37 @@ export const getAudienceSegments = async (
   }
 };
 
-export const generateImagenImage = async (prompt: string, aspectRatio: '9:16' | '16:9' | '1:1'): Promise<{ base64: string; mimeType: string }> => {
+export const generateImagenImage = async (prompt: string): Promise<{ base64: string; mimeType: string }> => {
   try {
-    const ai = getAiClient();
-    const response = await ai.models.generateImages({
-      model: 'imagen-4.0-generate-001',
-      prompt,
+    const response = await runGenerateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [{ text: prompt }],
+      },
       config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio,
+        responseModalities: [Modality.IMAGE],
       },
     });
 
-    const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-    if (!base64ImageBytes) {
-      throw new Error('API did not return image bytes.');
+    const part = response.candidates?.[0]?.content?.parts?.[0];
+    if (part?.inlineData) {
+      return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
     }
-    return { base64: base64ImageBytes, mimeType: 'image/jpeg' };
+    throw new Error('No image data received from API for prompt-based generation.');
   } catch (error) {
-    console.error(`Error generating image with aspect ratio ${aspectRatio}:`, error);
+    console.error('Error generating image:', error);
     throw new Error('Failed to generate image. Please try a different prompt.');
   }
 };
 
 export const generateImageFromProduct = async (
   productImage: SupportingDocument, 
-  prompt: string,
-  aspectRatio: '16:9' | '9:16' | '1:1'
+  prompt: string
 ): Promise<{ base64: string; mimeType: string }> => {
   const imagePart = {
     inlineData: { data: productImage.data, mimeType: productImage.mimeType },
   };
-  const textPart = { text: `Using the provided product image, create a new photorealistic image that places the product in the following scene: "${prompt}". The final generated image must have a ${aspectRatio} aspect ratio. Do not add any text or logos to the image that were not in the original product image.` };
+  const textPart = { text: `Using the provided product image, create a new photorealistic image that places the product in the following scene: "${prompt}". It is crucial that the product's size is realistic and in natural proportion to other objects and elements within the scene. The final generated image should be a square image with 1024x1024 resolution. Do not add any text or logos to the image that were not in the original product image.` };
 
   try {
     const response = await runGenerateContent({

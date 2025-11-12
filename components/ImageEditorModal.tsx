@@ -4,27 +4,20 @@ import Button from './common/Button';
 import { editImage } from '../services/geminiService';
 import { SparklesIcon } from './icons/SparklesIcon';
 
-type PreviewMode = 'website' | 'square';
 interface Props {
   creative: Creative;
-  imageKey: PreviewMode;
   onClose: () => void;
   onSave: (creative: Creative) => void;
   setError: (error: string | null) => void;
 }
 
-const displayNames: Record<PreviewMode, string> = {
-  website: 'Hero',
-  square: 'Square',
-};
-
-const ImageEditorModal: React.FC<Props> = ({ creative, imageKey, onClose, onSave, setError }) => {
+const ImageEditorModal: React.FC<Props> = ({ creative, onClose, onSave, setError }) => {
   const [prompt, setPrompt] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null);
   const [editedMimeType, setEditedMimeType] = useState<string | null>(null);
 
-  const originalImageUrl = creative.imageUrls[imageKey];
+  const originalImageUrl = creative.imageUrl;
 
   const handleEdit = async () => {
     if (!prompt) return;
@@ -45,10 +38,10 @@ const ImageEditorModal: React.FC<Props> = ({ creative, imageKey, onClose, onSave
 
   const handleSave = () => {
     if (editedImageUrl && editedMimeType) {
-      const newCreative = { ...creative, imageUrls: { ...creative.imageUrls } };
-      newCreative.imageUrls[imageKey] = editedImageUrl;
+      const newCreative = { ...creative };
+      newCreative.imageUrl = editedImageUrl;
       newCreative.mimeType = editedMimeType; // Assuming mime type could change
-      newCreative.imagePrompt = `${creative.imagePrompt} (Edited [${imageKey}]: ${prompt})`;
+      newCreative.imagePrompt = `${creative.imagePrompt} (Edited: ${prompt})`;
       onSave(newCreative);
     }
   };
@@ -58,7 +51,7 @@ const ImageEditorModal: React.FC<Props> = ({ creative, imageKey, onClose, onSave
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Edit {displayNames[imageKey]}</h2>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Edit Creative Image</h2>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
           </div>
 

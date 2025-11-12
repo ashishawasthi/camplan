@@ -10,18 +10,9 @@ interface Props {
   onBack: () => void;
 }
 
-type PreviewMode = 'website' | 'square';
-
 const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
-  const [activePreviews, setActivePreviews] = useState<{ [key: number]: PreviewMode }>(
-    () => Object.fromEntries(campaign.audienceSegments.map((_, i) => [i, 'website']))
-  );
   const [isExporting, setIsExporting] = useState(false);
   
-  const setActivePreview = (index: number, mode: PreviewMode) => {
-    setActivePreviews(prev => ({ ...prev, [index]: mode }));
-  };
-
   const handleExport = async () => {
     if (!campaign) return;
     setIsExporting(true);
@@ -77,17 +68,10 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
             }
             markdownContent += `\n---\n\n`;
 
-            if (segment.creative) {
-                // Hero image
-                const websiteImgData = segment.creative.imageUrls.website.split('base64,')[1];
-                if (websiteImgData) {
-                    segmentFolder.file('hero.jpeg', websiteImgData, { base64: true });
-                }
-                
-                // Square image
-                const squareImgData = segment.creative.imageUrls.square.split('base64,')[1];
-                if (squareImgData) {
-                    segmentFolder.file('square.jpeg', squareImgData, { base64: true });
+            if (segment.creative?.imageUrl) {
+                const imageData = segment.creative.imageUrl.split('base64,')[1];
+                if (imageData) {
+                    segmentFolder.file('creative.jpeg', imageData, { base64: true });
                 }
             }
         }
@@ -151,7 +135,6 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
       
       <div className="space-y-6">
         {campaign.audienceSegments.map((segment, index) => {
-           const previewMode = activePreviews[index] || 'website';
            return (
             <Card key={index} className="dark:bg-slate-800">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -191,12 +174,11 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
 
                 <div className="lg:col-span-1 flex flex-col">
                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2">Ad Creative</h4>
-                  {segment.creative?.imageUrls ? (
-                    <div className={`w-full bg-slate-100 dark:bg-slate-700/50 rounded-lg flex items-center justify-center relative ${previewMode === 'square' ? 'aspect-square' : 'aspect-video'}`}>
-                      <img src={segment.creative.imageUrls[activePreviews[index]]} alt={`Ad for ${segment.name}`} className="object-contain w-full h-full rounded-lg" />
-                      <div className="absolute top-2 right-2 bg-black/50 p-1 rounded-md flex gap-1">
-                        <button onClick={() => setActivePreview(index, 'website')} className={`px-2 py-1 text-xs rounded ${activePreviews[index] === 'website' ? 'bg-indigo-600 text-white' : 'bg-white/80 text-black'}`}>Hero</button>
-                        <button onClick={() => setActivePreview(index, 'square')} className={`px-2 py-1 text-xs rounded ${activePreviews[index] === 'square' ? 'bg-indigo-600 text-white' : 'bg-white/80 text-black'}`}>Square</button>
+                  {segment.creative?.imageUrl ? (
+                    <div className="w-full bg-slate-100 dark:bg-slate-700/50 rounded-lg flex items-center justify-center relative aspect-square">
+                      <img src={segment.creative.imageUrl} alt={`Ad for ${segment.name}`} className="object-contain w-full h-full rounded-lg" />
+                      <div className="absolute bottom-2 right-2 bg-black/50 px-2 py-1 rounded-md text-white/90 text-xs">
+                        1024x1024
                       </div>
                     </div>
                   ) : (

@@ -15,8 +15,6 @@ interface Props {
   setError: (error: string | null) => void;
 }
 
-type PreviewMode = 'website' | 'square';
-
 const timeout = (ms: number, message: string) => new Promise((_, reject) => {
   setTimeout(() => {
     reject(new Error(message));
@@ -24,10 +22,7 @@ const timeout = (ms: number, message: string) => new Promise((_, reject) => {
 });
 
 const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, error, setError }) => {
-  const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative, imageKey: PreviewMode } | null>(null);
-  const [activePreviews, setActivePreviews] = useState<{ [key: number]: PreviewMode }>(
-    () => Object.fromEntries(campaign.audienceSegments.map((_, i) => [i, 'website']))
-  );
+  const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
   
   const handleGenerateCreative = async (segmentIndex: number) => {
     setError(null);
@@ -39,41 +34,32 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     const existingCreative = segmentToUpdate.creative;
     // Provide a full creative object structure for the loading state to avoid type issues
     segmentToUpdate.creative = {
-        ...(existingCreative || { id: '', imagePrompt: '', notificationText: '', imageUrls: { square: '', website: ''}, mimeType: ''}),
+        ...(existingCreative || { id: '', imagePrompt: '', notificationText: '', imageUrl: '', mimeType: ''}),
         isGenerating: true,
     };
     setCampaign(newCampaign);
 
     try {
-      const imageGenerationPromises = campaign.productImage
-        ? [
-            generateImageFromProduct(campaign.productImage, segment.imagePrompt, '16:9'),
-            generateImageFromProduct(campaign.productImage, segment.imagePrompt, '1:1'),
-          ]
-        : [
-            generateImagenImage(segment.imagePrompt, '16:9'),
-            generateImagenImage(segment.imagePrompt, '1:1'),
-          ];
-      
+      const imageGenerationPromise = campaign.productImage
+        ? generateImageFromProduct(campaign.productImage, segment.imagePrompt)
+        : generateImagenImage(segment.imagePrompt);
+
       const generationPromise = Promise.all([
-        ...imageGenerationPromises,
+        imageGenerationPromise,
         generateNotificationText(segment.notificationTextPrompt, campaign.landingPageUrl, campaign.brandGuidelines)
       ]);
       
-      const [websiteResult, squareResult, notificationText] = await Promise.race([
+      const [imageResult, notificationText] = await Promise.race([
           generationPromise,
-          timeout(90000, 'Creative generation timed out after 90 seconds. Please try again.') // Increased timeout for multimodal
-      ]) as [{ base64: string; mimeType: string }, { base64: string; mimeType: string }, string];
+          timeout(90000, 'Creative generation timed out after 90 seconds. Please try again.')
+      ]) as [{ base64: string; mimeType: string }, string];
       
       const newCreative: Creative = {
         id: new Date().toISOString(),
         imagePrompt: segment.imagePrompt,
         notificationText,
-        imageUrls: {
-          website: `data:${websiteResult.mimeType};base64,${websiteResult.base64}`,
-          square: `data:${squareResult.mimeType};base64,${squareResult.base64}`,
-        },
-        mimeType: websiteResult.mimeType,
+        imageUrl: `data:${imageResult.mimeType};base64,${imageResult.base64}`,
+        mimeType: imageResult.mimeType,
         isGenerating: false,
       };
       
@@ -94,10 +80,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     newCampaign.audienceSegments[segmentIndex].creative = newCreative;
     setCampaign(newCampaign);
     setEditingCreative(null);
-  };
-  
-  const setActivePreview = (index: number, mode: PreviewMode) => {
-    setActivePreviews(prev => ({ ...prev, [index]: mode }));
   };
   
   const handleToggleSegment = (index: number) => {
@@ -139,7 +121,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
       <div className="space-y-8">
         {campaign.audienceSegments.map((segment, index) => {
           const creative = segment.creative;
-          const previewMode = activePreviews[index] || 'website';
           
           return (
             <Card key={index} className="flex flex-col">
@@ -156,31 +137,24 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                 />
               </div>
               
-              <div className={`bg-slate-100 dark:bg-slate-800/50 rounded-lg p-2 relative group w-full flex items-center justify-center transition-all duration-300 ${previewMode === 'square' ? 'aspect-square max-w-xl mx-auto' : 'aspect-video'}`}>
+              <div className="bg-slate-100 dark:bg-slate-800/50 rounded-lg p-2 relative group w-full flex items-center justify-center transition-all duration-300 aspect-square max-w-xl mx-auto">
                 {creative?.isGenerating ? (
                   <div className="flex flex-col items-center">
                     <SparklesIcon className="h-10 w-10 text-indigo-500 animate-pulse" />
                     <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Generating creative...</p>
                   </div>
-                ) : creative?.imageUrls.website ? (
+                ) : creative?.imageUrl ? (
                   <>
                     <img
-                      src={creative.imageUrls[previewMode]}
+                      src={creative.imageUrl}
                       alt={`Generated creative for ${segment.name}`}
                       className="object-contain max-h-full max-w-full rounded"
                     />
                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingCreative({ segmentIndex: index, creative, imageKey: previewMode })} className="px-2 py-1 text-xs rounded bg-white/80 text-black hover:bg-white shadow-md">Edit</button>
+                        <button onClick={() => setEditingCreative({ segmentIndex: index, creative })} className="px-2 py-1 text-xs rounded bg-white/80 text-black hover:bg-white shadow-md">Edit</button>
                     </div>
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 p-1 rounded-md flex gap-2 text-center">
-                      <button onClick={() => setActivePreview(index, 'website')} className={`px-3 py-1 text-xs rounded ${previewMode === 'website' ? 'bg-indigo-600 text-white' : 'bg-white/80 text-black'}`}>
-                        Hero
-                        <br/><span className="font-light opacity-80 text-[10px]">1920x1080</span>
-                      </button>
-                      <button onClick={() => setActivePreview(index, 'square')} className={`px-3 py-1 text-xs rounded ${previewMode === 'square' ? 'bg-indigo-600 text-white' : 'bg-white/80 text-black'}`}>
-                        Square
-                        <br/><span className="font-light opacity-80 text-[10px]">1080x1080</span>
-                      </button>
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 px-2 py-1 rounded-md text-center text-white/90 text-xs">
+                      1024x1024
                     </div>
                   </>
                 ) : (
@@ -199,7 +173,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                     <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">"{creative.notificationText}"</p>
                  </div>
               )}
-               {creative && !creative.isGenerating && !creative.imageUrls.website && (
+               {creative && !creative.isGenerating && !creative.imageUrl && (
                 <div className="text-center mt-4">
                     <Button onClick={() => handleGenerateCreative(index)} isLoading={creative?.isGenerating}>
                         Regenerate Creative
@@ -223,7 +197,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
       {editingCreative && (
         <ImageEditorModal
           creative={editingCreative.creative}
-          imageKey={editingCreative.imageKey}
           onClose={() => setEditingCreative(null)}
           onSave={(newCreative) => handleSaveEdit(editingCreative.segmentIndex, newCreative)}
           setError={setError}

@@ -24,7 +24,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       const start = new Date(campaign.startDate);
       const end = new Date(campaign.endDate);
       const durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
-      const segments = await getAudienceSegments(
+      const { segments, sources } = await getAudienceSegments(
         campaign.campaignName, 
         campaign.totalBudget, 
         durationDays, 
@@ -35,7 +35,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         campaign.supportingDocuments,
         campaign.productImage
       );
-      setCampaign({ ...campaign, audienceSegments: segments });
+      setCampaign({ ...campaign, audienceSegments: segments, segmentSources: sources });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
@@ -65,6 +65,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
   const handleNextWithSelection = () => {
     // We update the campaign state with only the selected segments before moving on
     const selectedSegments = campaign.audienceSegments.filter(s => s.isSelected);
+    // Keep segmentSources in the campaign object
     setCampaign({ ...campaign, audienceSegments: selectedSegments });
     onNext();
   };
@@ -108,12 +109,24 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
               <textarea
                 value={segment.description}
                 onChange={(e) => handleDescriptionChange(index, e.target.value)}
-                className="text-sm text-slate-600 dark:text-slate-300 mt-2 flex-grow bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 w-full resize-none"
+                className="text-sm text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 w-full resize-none"
                 rows={6}
                 aria-label={`Description for ${segment.name}`}
               />
               
-              <div className="mt-4">
+              {segment.rationale && (
+                <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        AI Rationale
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">{segment.rationale}</p>
+                </div>
+              )}
+
+              <div className="mt-4 flex-grow">
                 <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Key Motivations:</h4>
                 <ul className="list-disc list-inside text-sm text-slate-500 dark:text-slate-400 mt-1 space-y-1">
                   {segment.keyMotivations.map((m, i) => <li key={i}>{m}</li>)}
@@ -122,6 +135,22 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
             </Card>
           ))}
         </div>
+      )}
+
+      {campaign.segmentSources && campaign.segmentSources.length > 0 && !isLoading && (
+          <Card className="mt-8 max-w-4xl mx-auto">
+              <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Sources</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">The following web pages were used to inform the audience segmentation.</p>
+              <ul className="list-disc list-inside space-y-1">
+                  {campaign.segmentSources.map((source, index) => (
+                      <li key={index} className="text-sm truncate">
+                          <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                              {source.title}
+                          </a>
+                      </li>
+                  ))}
+              </ul>
+          </Card>
       )}
 
       <div className="mt-8 flex justify-between">
