@@ -21,8 +21,14 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
     setIsLoading(true);
     setError(null);
     try {
-      const splits = await getBudgetSplit(campaign.audienceSegments, campaign.totalBudget);
-      const newCampaign = { ...campaign };
+      const { analysis, splits, sources } = await getBudgetSplit(
+        campaign.audienceSegments, 
+        campaign.totalBudget,
+        campaign.country,
+        campaign.campaignName
+      );
+
+      const newCampaign = { ...campaign, budgetAnalysis: analysis, budgetSources: sources };
       
       let totalAllocated = 0;
       const updatedSegments = newCampaign.audienceSegments.map(segment => {
@@ -40,7 +46,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
       });
       
       // Normalize segment budgets if total allocated doesn't match total budget
-      if (totalAllocated > 0) {
+      if (totalAllocated > 0 && totalAllocated !== campaign.totalBudget) {
         const ratio = campaign.totalBudget / totalAllocated;
         let runningTotal = 0;
         updatedSegments.forEach((segment, index) => {
@@ -73,7 +79,6 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
         });
       }
 
-
       setCampaign({ ...newCampaign, audienceSegments: updatedSegments });
 
     } catch (err) {
@@ -94,11 +99,11 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
 
   return (
     <Card className="max-w-4xl mx-auto">
-      <h2 className="text-xl font-bold mb-1 text-slate-800 text-center">Budget Allocation</h2>
-      <p className="text-sm text-slate-500 mb-6 text-center">Here's a suggested budget split for your campaign, broken down by audience segment and media channel.</p>
+      <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Budget Allocation</h2>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 text-center">Here's a suggested budget split for your campaign, based on market analysis.</p>
 
       {isLoading ? (
-        <Loader text="Strategizing budget allocation..." />
+        <Loader text="Strategizing budget allocation with real-time data..." />
       ) : error && !budgetIsSet ? (
         <div className="text-center p-8">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,9 +117,16 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
         </div>
       ) : (
         <div className="space-y-6">
+          {campaign.budgetAnalysis && (
+            <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">Strategic Analysis</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{campaign.budgetAnalysis}</p>
+            </div>
+          )}
+
           <div>
-            <h3 className="text-base font-semibold text-slate-700 mb-2">Total Budget Allocation by Segment</h3>
-            <div className="w-full bg-slate-200 rounded-full h-8 flex overflow-hidden">
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Total Budget Allocation by Segment</h3>
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-8 flex overflow-hidden">
               {campaign.audienceSegments.map((segment, index) => {
                 const percentage = ((segment.budget || 0) / campaign.totalBudget) * 100;
                 const colors = ['bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-teal-500', 'bg-sky-500'];
@@ -132,26 +144,26 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
             </div>
           </div>
           
-          <div className="border-t border-slate-200 pt-6">
-            <h3 className="text-base font-semibold text-slate-700 mb-4">Paid Media Channel Breakdown</h3>
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">Paid Media Channel Breakdown</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {campaign.audienceSegments.map((segment, index) => {
                  const colors = ['border-indigo-500', 'border-purple-500', 'border-pink-500', 'border-teal-500', 'border-sky-500'];
                  const percentage = ((segment.budget || 0) / campaign.totalBudget) * 100;
                  return (
-                  <div key={index} className={`p-4 bg-slate-50 rounded-lg border-l-4 ${colors[index % colors.length]}`}>
+                  <div key={index} className={`p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-l-4 ${colors[index % colors.length]}`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-bold text-slate-800">{segment.name}</h4>
+                      <h4 className="font-bold text-slate-800 dark:text-slate-200">{segment.name}</h4>
                       <div className="text-right">
-                        <span className="font-semibold text-slate-800">${(segment.budget || 0).toLocaleString()}</span>
-                        <span className="text-sm text-slate-500 ml-2">({percentage.toFixed(1)}%)</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">${(segment.budget || 0).toLocaleString()}</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">({percentage.toFixed(1)}%)</span>
                       </div>
                     </div>
                     <ul className="space-y-2 text-sm">
                       {segment.mediaSplit?.map((media, mediaIndex) => (
                         <li key={mediaIndex} className="flex justify-between items-center">
-                          <span className="text-slate-600">{media.channel}</span>
-                          <span className="font-medium text-slate-700">${media.budget.toLocaleString()}</span>
+                          <span className="text-slate-600 dark:text-slate-300">{media.channel}</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">${media.budget.toLocaleString()}</span>
                         </li>
                       ))}
                     </ul>
@@ -160,6 +172,21 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
               })}
             </div>
           </div>
+
+          {campaign.budgetSources && campaign.budgetSources.length > 0 && (
+            <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Sources</h4>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                    {campaign.budgetSources.map((source, index) => (
+                        <li key={index} className="text-sm truncate">
+                            <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                {source.title}
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+          )}
         </div>
       )}
 

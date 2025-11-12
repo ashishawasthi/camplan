@@ -24,6 +24,11 @@ export interface SupportingDocument {
   data: string; // base64 encoded string
 }
 
+export interface GroundingSource {
+    title: string;
+    uri: string;
+}
+
 export interface Campaign {
   campaignName: string;
   country: string;
@@ -33,4 +38,6 @@ export interface Campaign {
   audienceSegments: AudienceSegment[];
   audienceInstructions?: string;
   supportingDocuments?: SupportingDocument[];
+  budgetAnalysis?: string;
+  budgetSources?: GroundingSource[];
 }

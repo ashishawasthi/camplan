@@ -1,11 +1,6 @@
-import { GoogleGenAI, Type, Modality } from '@google/genai';
-import { AudienceSegment, SupportingDocument } from '../types';
-
-if (!process.env.API_KEY) {
-  console.warn("API_KEY environment variable not set. Using a placeholder. Please provide a valid API key for the application to function.");
-}
-
-const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY ?? 'MISSING_API_KEY' });
+import { Type, Modality } from '@google/genai';
+import { AudienceSegment, SupportingDocument, GroundingSource } from '../types';
+import { runGenerateContent } from './geminiClient';
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
 
@@ -17,7 +12,6 @@ export const getAudienceSegments = async (
   audienceInstructions?: string,
   supportingDocuments?: SupportingDocument[]
 ): Promise<AudienceSegment[]> => {
-  const ai = getAiClient();
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a total budget of $${totalBudget} and will run for ${durationDays} days.
@@ -47,7 +41,7 @@ export const getAudienceSegments = async (
   }
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: { parts },
       config: {
@@ -89,9 +83,8 @@ export const getAudienceSegments = async (
 };
 
 export const generateImage = async (prompt: string): Promise<{ base64: string; mimeType: string }> => {
-  const ai = getAiClient();
   try {
-    const response = await ai.models.generateContent({
+    const response = await runGenerateContent({
       model: 'gemini-2.5-flash-image',
       contents: { parts: [{ text: prompt }] },
       config: {
@@ -111,14 +104,13 @@ export const generateImage = async (prompt: string): Promise<{ base64: string; m
 };
 
 export const editImage = async (base64Image: string, mimeType: string, prompt: string): Promise<{ base64: string; mimeType: string }> => {
-  const ai = getAiClient();
   const imagePart = {
     inlineData: { data: base64Image, mimeType },
   };
   const textPart = { text: prompt };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await runGenerateContent({
       model: 'gemini-2.5-flash-image',
       contents: { parts: [imagePart, textPart] },
       config: {
@@ -137,29 +129,45 @@ export const editImage = async (base64Image: string, mimeType: string, prompt: s
   }
 };
 
-export const getBudgetSplit = async (segments: AudienceSegment[], totalBudget: number): Promise<{ segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[]> => {
-  const ai = getAiClient();
+export const getBudgetSplit = async (
+  segments: AudienceSegment[], 
+  totalBudget: number,
+  country: string,
+  campaignName: string
+): Promise<{ 
+  analysis: string; 
+  splits: { segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[];
+  sources: GroundingSource[];
+}> => {
   const segmentDetails = segments.map(s => `Segment "${s.name}": ${s.description}`).join('\n');
   const prompt = `
-    Given a total advertising budget of $${totalBudget} and the following target audience segments:
+    As a digital marketing strategist for a consumer bank in ${country}, your task is to propose a budget allocation for an ad campaign titled "${campaignName}".
+    The total budget is $${totalBudget}. The target audience segments are:
     ${segmentDetails}
 
-    Please propose a strategic budget split. First, allocate the total budget across the segments based on their likely potential and reach.
-    Second, for each segment's allocated budget, further split it across these specific paid media channels: Facebook, Instagram, Google, and TikTok.
-    The split should be logical for the segment's demographic and motivations. For example, younger audiences might be better reached on TikTok and Instagram.
+    First, conduct a brief analysis of the current digital marketing landscape and consumer media consumption habits in ${country}, particularly for financial products. Use real-time search to gather recent data and trends. This analysis should justify your budget allocation strategy.
 
-    Provide the output as a JSON object with a list of budget splits. Each item should contain the segment name, its total allocated budget, and a breakdown by media channel.
+    Second, based on your analysis, propose a strategic budget split. Allocate the total budget across the identified segments based on their potential ROI. Then, for each segment, break down their allocated budget across these paid media channels: Facebook, Instagram, Google (Search & Display), and TikTok.
+
+    Provide the output as a single JSON object with two keys: "analysis" and "budgetSplits".
+    - The "analysis" key should contain your market analysis as a string.
+    - The "budgetSplits" key should contain an array of objects, where each object represents a segment and includes its name, total allocated budget, and the media channel breakdown.
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: prompt,
+      tools: [{googleSearch: {}}],
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
           properties: {
+            analysis: {
+              type: Type.STRING,
+              description: "Market analysis and strategic rationale for the budget split."
+            },
             budgetSplits: {
               type: Type.ARRAY,
               items: {
@@ -183,13 +191,29 @@ export const getBudgetSplit = async (segments: AudienceSegment[], totalBudget: n
               }
             }
           },
-          required: ['budgetSplits']
+          required: ['analysis', 'budgetSplits']
         }
       }
     });
 
     const parsed = JSON.parse(response.text);
-    return parsed.budgetSplits;
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+    
+    const sources = groundingChunks
+      .filter(chunk => chunk.web && chunk.web.uri && chunk.web.title)
+      .map(chunk => ({
+          uri: chunk.web!.uri!,
+          title: chunk.web!.title!,
+      }))
+      .filter((source, index, self) => 
+        index === self.findIndex((s) => s.uri === source.uri)
+      );
+
+    return {
+      analysis: parsed.analysis,
+      splits: parsed.budgetSplits,
+      sources: sources
+    };
 
   } catch (error) {
     console.error("Error fetching budget split:", error);
