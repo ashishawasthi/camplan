@@ -69,7 +69,7 @@ const App: React.FC = () => {
       <header className="bg-white dark:bg-slate-800/50 shadow-sm">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Ad Campaign Planner
+            Campaign Planner
             {campaign?.campaignName && <span className="text-indigo-600 dark:text-indigo-400 font-medium text-xl ml-2">: {campaign.campaignName}</span>}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Your AI-powered assistant for creating impactful marketing campaigns.</p>
