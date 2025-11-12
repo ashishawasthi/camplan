@@ -4,7 +4,7 @@
 
 This contains everything you need to run your app locally.
 
-Deployed on: https://ai.studio/apps/drive/14x0hy7v9WULBiUI44NOLNf5a_IFjL-6X
+Deployed on: https://ad-campaign-planner-708214089226.us-west1.run.app/ 
 
 ### Run Locally
 
