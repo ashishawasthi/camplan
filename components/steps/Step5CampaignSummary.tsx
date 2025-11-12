@@ -3,6 +3,8 @@ import { Campaign } from '../../types';
 import Button from '../common/Button';
 import Card from '../common/Card';
 
+declare var JSZip: any;
+
 interface Props {
   campaign: Campaign;
   onBack: () => void;
@@ -14,10 +16,103 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
   const [activePreviews, setActivePreviews] = useState<{ [key: number]: PreviewMode }>(
     () => Object.fromEntries(campaign.audienceSegments.map((_, i) => [i, 'desktop']))
   );
+  const [isExporting, setIsExporting] = useState(false);
   
   const setActivePreview = (index: number, mode: PreviewMode) => {
     setActivePreviews(prev => ({ ...prev, [index]: mode }));
   };
+
+  const handleExport = async () => {
+    if (!campaign) return;
+    setIsExporting(true);
+    try {
+        const zip = new JSZip();
+
+        // 1. Create Markdown content
+        let markdownContent = `# Campaign Plan: ${campaign.campaignName}\n\n`;
+        markdownContent += `## 1. Campaign Overview\n`;
+        markdownContent += `- **Country:** ${campaign.country}\n`;
+        markdownContent += `- **Total Budget:** $${campaign.totalBudget.toLocaleString()}\n`;
+        markdownContent += `- **Duration:** ${campaign.startDate} to ${campaign.endDate}\n`;
+        markdownContent += `- **Landing Page:** ${campaign.landingPageUrl}\n\n---\n\n`;
+
+        if (campaign.budgetAnalysis) {
+            markdownContent += `## 2. Strategic Analysis\n`;
+            markdownContent += `${campaign.budgetAnalysis}\n\n`;
+        }
+
+        if (campaign.budgetSources && campaign.budgetSources.length > 0) {
+            markdownContent += `**Sources:**\n`;
+            campaign.budgetSources.forEach(source => {
+                markdownContent += `- [${source.title}](${source.uri})\n`;
+            });
+            markdownContent += `\n`;
+        }
+        
+        markdownContent += `## 3. Audience Segments & Creatives\n\n`;
+
+        // 2. Loop through segments
+        for (const segment of campaign.audienceSegments) {
+            const segmentFolderName = segment.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+            const segmentFolder = zip.folder(segmentFolderName);
+
+            markdownContent += `### Segment: ${segment.name}\n`;
+            markdownContent += `- **Description:** ${segment.description}\n`;
+            markdownContent += `- **Key Motivations:**\n`;
+            segment.keyMotivations.forEach(m => {
+                markdownContent += `    - ${m}\n`;
+            });
+            markdownContent += `- **Allocated Budget:** $${(segment.budget || 0).toLocaleString()}\n`;
+            if (segment.creative?.notificationText) {
+                markdownContent += `- **Push Notification Text:** "${segment.creative.notificationText}"\n`;
+            }
+            if (segment.mediaSplit && segment.mediaSplit.length > 0) {
+                 markdownContent += `- **Media Split:**\n\n`;
+                 markdownContent += `| Channel   | Budget      |\n`;
+                 markdownContent += `|-----------|-------------|\n`;
+                 segment.mediaSplit.forEach(media => {
+                     markdownContent += `| ${media.channel} | $${media.budget.toLocaleString()} |\n`;
+                 });
+                 markdownContent += `\n`;
+            }
+            markdownContent += `\n---\n\n`;
+
+            if (segment.creative) {
+                // Desktop image
+                const desktopImgData = segment.creative.imageUrls.desktop.split('base64,')[1];
+                if (desktopImgData) {
+                    segmentFolder.file('desktop.jpeg', desktopImgData, { base64: true });
+                }
+                
+                // Mobile image
+                const mobileImgData = segment.creative.imageUrls.mobile.split('base64,')[1];
+                if (mobileImgData) {
+                    segmentFolder.file('mobile.jpeg', mobileImgData, { base64: true });
+                }
+            }
+        }
+        
+        zip.file('summary.md', markdownContent);
+
+        // 3. Generate and download zip
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeCampaignName = campaign.campaignName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+        a.download = `${safeCampaignName}-campaign-plan.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+    } catch (error) {
+        console.error("Failed to export campaign plan:", error);
+        alert("An error occurred while trying to export the plan. Please check the console for details.");
+    } finally {
+        setIsExporting(false);
+    }
+};
 
   return (
     <div>
@@ -117,8 +212,8 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={() => alert('Campaign plan finalized!')}>
-          Finalize & Export Plan
+        <Button onClick={handleExport} isLoading={isExporting}>
+          {isExporting ? 'Exporting...' : 'Finalize & Export Plan'}
         </Button>
       </div>
     </div>

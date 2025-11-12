@@ -80,12 +80,12 @@ const ImageEditorModal: React.FC<Props> = ({ creative, imageKey, onClose, onSave
           </div>
           
           <div className="flex gap-4">
-            <input
-              type="text"
+            <textarea
+              rows={2}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="e.g., 'Add a retro filter' or 'Make the background a cityscape'"
-              className="flex-grow block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 dark:border-slate-600"
+              className="flex-grow block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 dark:border-slate-600 resize-none"
             />
             <Button onClick={handleEdit} isLoading={isEditing} disabled={!prompt}>
               Apply Edit

@@ -52,7 +52,7 @@ const App: React.FC = () => {
         return <Step2AudienceSegments campaign={campaign} setCampaign={updateCampaign} onNext={handleNext} onBack={handleBack} error={error} setError={setError} />;
       case 3:
         if (!campaign) return null;
-        return <Step3CreativeGeneration campaign={campaign} setCampaign={updateCampaign} onNext={handleNext} onBack={handleBack} setError={setError} />;
+        return <Step3CreativeGeneration campaign={campaign} setCampaign={updateCampaign} onNext={handleNext} onBack={handleBack} error={error} setError={setError} />;
       case 4:
         if (!campaign) return null;
         return <Step4BudgetSplit campaign={campaign} setCampaign={updateCampaign} onNext={handleNext} onBack={handleBack} error={error} setError={setError} />;
@@ -77,7 +77,7 @@ const App: React.FC = () => {
       </header>
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <StepIndicator steps={STEPS} currentStep={currentStep} />
-        {error && currentStep !== 2 && currentStep !== 4 && ( // Hide global error for steps with local error handling
+        {error && currentStep !== 2 && currentStep !== 3 && currentStep !== 4 && ( // Hide global error for steps with local error handling
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative my-4" role="alert">
             <strong className="font-bold">Error: </strong>
             <span className="block sm:inline">{error}</span>
