@@ -4,7 +4,9 @@ import { generateImagenImage, generateNotificationText, generateImageFromProduct
 import Button from '../common/Button';
 import Card from '../common/Card';
 import ImageEditorModal from '../ImageEditorModal';
+import NotificationEditorModal from '../NotificationEditorModal';
 import { SparklesIcon } from '../icons/SparklesIcon';
+import { PencilIcon } from '../icons/PencilIcon';
 
 interface Props {
   campaign: Campaign;
@@ -23,6 +25,7 @@ const timeout = (ms: number, message: string) => new Promise((_, reject) => {
 
 const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, error, setError }) => {
   const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
+  const [editingNotification, setEditingNotification] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
   
   const handleGenerateCreative = async (segmentIndex: number) => {
     setError(null);
@@ -75,6 +78,13 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     }
   };
   
+  const handleImagePromptChange = (segmentIndex: number, newPrompt: string) => {
+    const newCampaign = { ...campaign, audienceSegments: [...campaign.audienceSegments] };
+    const segmentToUpdate = newCampaign.audienceSegments[segmentIndex];
+    segmentToUpdate.imagePrompt = newPrompt;
+    setCampaign(newCampaign);
+  };
+
   const handleSaveEdit = (segmentIndex: number, newCreative: Creative) => {
     const newCampaign = { ...campaign, audienceSegments: [...campaign.audienceSegments] };
     newCampaign.audienceSegments[segmentIndex].creative = newCreative;
@@ -82,13 +92,20 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     setEditingCreative(null);
   };
   
+  const handleSaveNotificationEdit = (segmentIndex: number, newCreative: Creative) => {
+    const newCampaign = { ...campaign, audienceSegments: [...campaign.audienceSegments] };
+    newCampaign.audienceSegments[segmentIndex].creative = newCreative;
+    setCampaign(newCampaign);
+    setEditingNotification(null);
+  };
+
   const handleToggleSegment = (index: number) => {
     const newSegments = [...campaign.audienceSegments];
     const segment = newSegments[index];
     segment.isSelected = !segment.isSelected; 
     setCampaign({ ...campaign, audienceSegments: newSegments });
   };
-
+  
   const handleNextWithSelection = () => {
     const selectedSegments = campaign.audienceSegments.filter(s => s.isSelected);
     setCampaign({ ...campaign, audienceSegments: selectedSegments });
@@ -136,48 +153,72 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                   aria-label={`Select segment ${segment.name}`}
                 />
               </div>
-              
-              <div className="bg-slate-100 dark:bg-slate-800/50 rounded-lg p-2 relative group w-full flex items-center justify-center transition-all duration-300 aspect-square max-w-xl mx-auto">
-                {creative?.isGenerating ? (
-                  <div className="flex flex-col items-center">
-                    <SparklesIcon className="h-10 w-10 text-indigo-500 animate-pulse" />
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Generating creative...</p>
-                  </div>
-                ) : creative?.imageUrl ? (
-                  <>
-                    <img
-                      src={creative.imageUrl}
-                      alt={`Generated creative for ${segment.name}`}
-                      className="object-contain max-h-full max-w-full rounded"
-                    />
-                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingCreative({ segmentIndex: index, creative })} className="px-2 py-1 text-xs rounded bg-white/80 text-black hover:bg-white shadow-md">Edit</button>
-                    </div>
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 px-2 py-1 rounded-md text-center text-white/90 text-xs">
-                      1024x1024
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8">
-                    <SparklesIcon className="h-10 w-10 text-slate-400 mx-auto" />
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">No creative yet.</p>
-                     <Button variant="secondary" className="mt-4" onClick={() => handleGenerateCreative(index)} isLoading={creative?.isGenerating}>
-                       Generate Creative
+
+              <div className="mt-4">
+                <label htmlFor={`image-prompt-${index}`} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Image Prompt
+                </label>
+                <div className="relative mt-1">
+                  <textarea
+                    id={`image-prompt-${index}`}
+                    rows={5}
+                    value={segment.imagePrompt}
+                    onChange={(e) => handleImagePromptChange(index, e.target.value)}
+                    className="w-full block p-2.5 pr-32 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 dark:border-slate-600 resize-y"
+                    aria-label={`Image prompt for ${segment.name}`}
+                  />
+                  <div className="absolute bottom-2.5 right-2.5">
+                    <Button 
+                        variant="secondary" 
+                        onClick={() => handleGenerateCreative(index)} 
+                        isLoading={creative?.isGenerating}
+                        className="!py-1.5 !px-3"
+                        aria-label={creative?.imageUrl ? 'Regenerate creative' : 'Generate creative'}
+                    >
+                        <SparklesIcon className="h-4 w-4 mr-1.5" />
+                        {creative?.imageUrl ? 'Regenerate' : 'Generate'}
                     </Button>
                   </div>
-                )}
+                </div>
               </div>
-              {creative && !creative.isGenerating && creative.notificationText && (
-                 <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
-                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Push Notification Text</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">"{creative.notificationText}"</p>
-                 </div>
+
+              {creative?.isGenerating && (
+                <div className="mt-4 flex flex-col items-center justify-center p-10 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700">
+                  <SparklesIcon className="h-10 w-10 text-indigo-500 animate-pulse" />
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Generating creative...</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">This can take up to 90 seconds.</p>
+                </div>
               )}
-               {creative && !creative.isGenerating && !creative.imageUrl && (
-                <div className="text-center mt-4">
-                    <Button onClick={() => handleGenerateCreative(index)} isLoading={creative?.isGenerating}>
-                        Regenerate Creative
-                    </Button>
+
+              {creative && !creative.isGenerating && creative.imageUrl && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                    <div className="bg-slate-100 dark:bg-slate-800/50 rounded-lg p-2 relative group w-full flex items-center justify-center transition-all duration-300 aspect-square">
+                      <img
+                        src={creative.imageUrl}
+                        alt={`Generated creative for ${segment.name}`}
+                        className="object-contain max-h-full max-w-full rounded"
+                      />
+                       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingCreative({ segmentIndex: index, creative })} className="p-1.5 rounded bg-white/80 text-black hover:bg-white shadow-md">
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                      </div>
+                    </div>
+                    
+                   <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 h-full">
+                      <div className="flex justify-between items-center mb-1">
+                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Push Notification Text</h4>
+                          <button onClick={() => setEditingNotification({ segmentIndex: index, creative })} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                              <PencilIcon className="h-4 w-4" />
+                          </button>
+                      </div>
+                      <p 
+                        className="w-full text-sm text-slate-600 dark:text-slate-300 bg-transparent p-0"
+                        aria-label={`Notification text for ${segment.name}`}
+                      >
+                        {creative.notificationText}
+                      </p>
+                   </div>
                 </div>
               )}
             </Card>
@@ -199,6 +240,16 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
           creative={editingCreative.creative}
           onClose={() => setEditingCreative(null)}
           onSave={(newCreative) => handleSaveEdit(editingCreative.segmentIndex, newCreative)}
+          setError={setError}
+        />
+      )}
+
+      {editingNotification && (
+        <NotificationEditorModal
+          creative={editingNotification.creative}
+          campaign={campaign}
+          onClose={() => setEditingNotification(null)}
+          onSave={(newCreative) => handleSaveNotificationEdit(editingNotification.segmentIndex, newCreative)}
           setError={setError}
         />
       )}

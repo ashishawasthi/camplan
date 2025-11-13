@@ -34,6 +34,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
   const [endDate, setEndDate] = useState(initialDates.end);
   const [landingPageUrl, setLandingPageUrl] = useState('');
   const [totalBudget, setTotalBudget] = useState('');
+  const [productDetailsUrl, setProductDetailsUrl] = useState('');
   const [targetingGuidelines, setTargetingGuidelines] = useState('');
   const [brandGuidelines, setBrandGuidelines] = useState('');
   const [performanceGuidelines, setPerformanceGuidelines] = useState('');
@@ -106,6 +107,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
           landingPageUrl: landingPageUrl,
           totalBudget: parseFloat(totalBudget),
           productImage,
+          productDetailsUrl: productDetailsUrl || undefined,
           targetingGuidelines: targetingGuidelines || undefined,
           brandGuidelines: brandGuidelines || undefined,
           performanceGuidelines: performanceGuidelines || undefined,
@@ -259,6 +261,20 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                 onChange={(e) => setPerformanceGuidelines(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
                 placeholder={`e.g.,\n- Primary KPI is new account sign-ups.\n- Prioritize segments with high engagement on Instagram.\n- Allocate more budget towards the end of the campaign period.`}
+              />
+            </div>
+            <div>
+              <label htmlFor="productDetailsUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Product Details URL
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Provide a link to the product page for more detailed analysis and competitor research.</p>
+              <input
+                type="url"
+                id="productDetailsUrl"
+                value={productDetailsUrl}
+                onChange={(e) => setProductDetailsUrl(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder="https://yourbank.com/products/your-credit-card"
               />
             </div>
              <div>

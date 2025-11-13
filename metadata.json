@@ -1,5 +1,5 @@
 {
-  "name": "Campaign Planner",
+  "name": "Ad Campaign Planner",
   "description": "An intuitive interface for marketing and branding creatives in a consumer bank to iteratively design and plan a time-bound ad campaign. It helps find target audience segments, create and edit ad images for each segment, and suggests a budget split for paid media.",
   "requestFramePermissions": []
 }

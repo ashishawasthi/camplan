@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from '@google/genai';
-import { AudienceSegment, SupportingDocument, GroundingSource } from '../types';
+import { AudienceSegment, SupportingDocument, GroundingSource, CompetitorAnalysis } from '../types';
 import { runGenerateContent } from './geminiClient';
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -13,27 +13,54 @@ export const getAudienceSegments = async (
   durationDays: number,
   country: string,
   landingPageUrl: string,
+  productDetailsUrl?: string,
   targetingGuidelines?: string,
   brandGuidelines?: string,
   supportingDocuments?: SupportingDocument[],
   productImage?: SupportingDocument
-): Promise<{ segments: AudienceSegment[], sources: GroundingSource[] }> => {
+): Promise<{ segments: AudienceSegment[], sources: GroundingSource[], competitorAnalysis?: CompetitorAnalysis, marketAnalysis?: string }> => {
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a total budget of $${totalBudget} and will run for ${durationDays} days.
-    
-    First, use Google Search to research the current market for this type of product/service in ${country}. Look for consumer trends, competitor strategies, and relevant demographic/psychographic data.
+  `;
 
-    Second, analyze the content of the campaign's landing page, which contains the core offer and details: ${landingPageUrl}.
+  if (productDetailsUrl) {
+      prompt += `
+      
+      First, analyze the provided product details page for our product: ${productDetailsUrl}.
+
+      Second, use Google Search to identify 2-3 key competitors for this product in ${country}.
+      
+      Third, create a competitor comparison table. For your product (labeled with brand 'Our Bank') and each competitor, include: Product Name, Brand, Key Features (as a list of strings), and a description of their primary Target Audience.
+      
+      Fourth, provide a brief summary of your findings from this competitive analysis, highlighting our product's key differentiators or weaknesses.
+      `;
+  }
+
+  prompt += `
     
-    Based on your combined analysis of the search results and the landing page content, define each audience segment with the following properties:
+    Next, use Google Search to research the current market for this type of product/service in ${country}. Look for consumer trends, competitor strategies, and relevant demographic/psychographic data.
+    
+    Then, analyze the content of the campaign's landing page, which contains the core offer and details: ${landingPageUrl}.
+
+    After that, provide a "Market & Product Analysis". This should be a concise summary of your key findings from the web search and the product/landing page content. Highlight consumer trends, key value propositions from the landing page, and any other insights that will directly inform the audience segmentation that follows.
+    
+    Finally, based on ALL your analysis (the competitor analysis if conducted, the market research, and the product/landing page analysis), define each audience segment with the following properties:
     1. A short, descriptive name.
     2. A detailed description of the segment's demographics, lifestyle, and psychographics.
     3. A "rationale" explaining your reasoning. This rationale MUST explicitly reference specific facts, features, or language from the landing page content AND insights gathered from your web search to justify why this segment is a valuable target.
     4. A list of their key motivations for banking products.
-    5. A creative, detailed prompt for generating a compelling ad image (the 'imagePrompt'). This image prompt must be visually descriptive, culturally relevant to ${country}, and emotionally resonant.
-    IMPORTANT: The image prompt must NOT depict any specific real-world products or brand logos unless a product image is provided below or they are explicitly mentioned in the brand guidelines. Instead, use generic representations (e.g., a generic credit card, not a Visa).
-    ${productImage ? 'A product image has been provided. The imagePrompt for each segment should describe a scene that naturally features the provided product.' : 'Since no specific product image is provided, the imagePrompt should not attempt to render a specific product.'}
+    5. A highly detailed, creative prompt for generating a compelling ad image using a text-to-image model (the 'imagePrompt'). This prompt must be a rich, descriptive paragraph. It should specify:
+    - **Subject:** What is the main focus of the image? (e.g., a person, an object, a scene)
+    - **Scene/Setting:** Where is the subject? (e.g., a modern cafe, a family home, an outdoor market)
+    - **Action/Mood:** What is happening? What is the emotional tone? (e.g., joyful, serene, ambitious, secure)
+    - **Style:** What is the artistic style? (e.g., photorealistic, cinematic, vibrant illustration, warm and friendly)
+    - **Composition:** How should the image be framed? (e.g., close-up, wide shot, rule of thirds)
+    - **Lighting:** Describe the lighting. (e.g., soft natural light, dramatic studio lighting, golden hour)
+    - **Colors:** What is the color palette? (e.g., warm and earthy tones, cool and professional blues, vibrant and energetic colors)
+    - **Cultural Relevance:** Ensure the scene, people, and objects are culturally relevant to ${country}.
+    - **IMPORTANT:** The prompt must NOT depict any specific real-world products or brand logos unless a product image is provided below or they are explicitly mentioned in the brand guidelines. Instead, use generic representations (e.g., a generic credit card, not a Visa).
+    ${productImage ? "A product image has been provided. The imagePrompt for each segment should describe a scene that naturally features the provided product, paying attention to its realistic integration." : "Since no specific product image is provided, the imagePrompt should not attempt to render a specific product."}
     6. A separate, short prompt for generating a concise and compelling mobile push notification text for that segment.
   `;
 
@@ -79,6 +106,60 @@ export const getAudienceSegments = async (
     }
   }
 
+  const schemaProperties: any = {
+    segments: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          description: { type: Type.STRING },
+          rationale: { 
+            type: Type.STRING,
+            description: "Justification for selecting this segment, citing landing page content and search results."
+          },
+          keyMotivations: { type: Type.ARRAY, items: { type: Type.STRING } },
+          imagePrompt: { type: Type.STRING },
+          notificationTextPrompt: { type: Type.STRING }
+        },
+        required: ['name', 'description', 'rationale', 'keyMotivations', 'imagePrompt', 'notificationTextPrompt']
+      }
+    },
+    marketAnalysis: {
+        type: Type.STRING,
+        description: "A summary of findings from the market research and product/landing page analysis, highlighting consumer trends and key value propositions that inform segmentation."
+    }
+  };
+  const requiredProperties = ['segments', 'marketAnalysis'];
+
+  if (productDetailsUrl) {
+    schemaProperties.competitorAnalysis = {
+      type: Type.OBJECT,
+      properties: {
+        summary: {
+          type: Type.STRING,
+          description: "A brief summary of findings from the competitive analysis."
+        },
+        comparisonTable: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              productName: { type: Type.STRING },
+              brand: { type: Type.STRING },
+              keyFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
+              targetAudience: { type: Type.STRING }
+            },
+            required: ['productName', 'brand', 'keyFeatures', 'targetAudience']
+          }
+        }
+      },
+      required: ['summary', 'comparisonTable']
+    };
+    requiredProperties.push('competitorAnalysis');
+  }
+
+
   try {
     const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
@@ -88,27 +169,8 @@ export const getAudienceSegments = async (
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
-          properties: {
-            segments: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  rationale: { 
-                    type: Type.STRING,
-                    description: "Justification for selecting this segment, citing landing page content and search results."
-                  },
-                  keyMotivations: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  imagePrompt: { type: Type.STRING },
-                  notificationTextPrompt: { type: Type.STRING }
-                },
-                required: ['name', 'description', 'rationale', 'keyMotivations', 'imagePrompt', 'notificationTextPrompt']
-              }
-            }
-          },
-          required: ['segments']
+          properties: schemaProperties,
+          required: requiredProperties,
         }
       }
     });
@@ -130,7 +192,12 @@ export const getAudienceSegments = async (
         index === self.findIndex((s) => s.uri === source.uri)
       );
 
-    return { segments: segmentsWithSelection, sources };
+    return { 
+        segments: segmentsWithSelection, 
+        sources,
+        competitorAnalysis: parsed.competitorAnalysis,
+        marketAnalysis: parsed.marketAnalysis,
+    };
 
   } catch (error) {
     console.error("Error fetching audience segments:", error);
@@ -168,7 +235,7 @@ export const generateImageFromProduct = async (
   const imagePart = {
     inlineData: { data: productImage.data, mimeType: productImage.mimeType },
   };
-  const textPart = { text: `Using the provided product image, create a new photorealistic image that places the product in the following scene: "${prompt}". It is crucial that the product's size is realistic and in natural proportion to other objects and elements within the scene. The final generated image should be a square image with 1024x1024 resolution. Do not add any text or logos to the image that were not in the original product image.` };
+  const textPart = { text: `Using the provided product image, create a new photorealistic image that places the product in the following scene: "${prompt}". Pay close attention to the scale of the product. It is crucial that the product's size is realistic and in natural proportion to other objects and elements within the scene. For example, if the product is a credit card and the scene includes a person's hand, the card should be sized correctly to fit in the hand, not appear oversized. The final generated image should be a square image with 1024x1024 resolution. Do not add any text or logos to the image that were not in the original product image.` };
 
   try {
     const response = await runGenerateContent({
@@ -206,6 +273,35 @@ export const generateNotificationText = async (prompt: string, landingPageUrl: s
     } catch (error) {
       console.error("Error generating notification text:", error);
       throw new Error("Failed to generate notification text.");
+    }
+};
+
+export const editNotificationText = async (originalText: string, editPrompt: string, landingPageUrl: string, brandGuidelines?: string): Promise<string> => {
+    let fullPrompt = `You are an expert copywriter. Your task is to revise a mobile push notification text based on a user's request.
+
+Original notification text:
+"${originalText}"
+
+User's revision instruction:
+"${editPrompt}"
+
+The notification should entice users to visit the landing page: ${landingPageUrl}.`;
+
+    if (brandGuidelines) {
+      fullPrompt += `\n\nAdhere to these brand guidelines:\n${brandGuidelines}`;
+    }
+    
+    fullPrompt += "\n\nBased on the instruction, provide the revised notification text. The notification should remain short, engaging, and have a clear call to action. Return only the revised text, with no extra formatting or labels.";
+
+    try {
+      const response = await runGenerateContent({
+        model: 'gemini-2.5-flash',
+        contents: fullPrompt,
+      });
+      return response.text.trim().replace(/^"|"$/g, ''); // Trim and remove quotes
+    } catch (error) {
+      console.error("Error editing notification text:", error);
+      throw new Error("Failed to edit notification text.");
     }
 };
 

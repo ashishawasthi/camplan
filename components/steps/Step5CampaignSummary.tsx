@@ -182,8 +182,11 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full aspect-video bg-slate-100 dark:bg-slate-700/50 rounded-lg flex items-center justify-center">
-                      <p className="text-slate-500">No creative generated.</p>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 h-full">
+                      <h5 className="text-xs font-semibold text-slate-600 dark:text-slate-400">Image Prompt</h5>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                        {segment.imagePrompt}
+                      </p>
                     </div>
                   )}
                 </div>

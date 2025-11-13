@@ -31,6 +31,18 @@ export interface GroundingSource {
     uri: string;
 }
 
+export interface CompetitorProduct {
+  productName: string;
+  brand: string;
+  keyFeatures: string[];
+  targetAudience: string;
+}
+
+export interface CompetitorAnalysis {
+  summary: string;
+  comparisonTable: CompetitorProduct[];
+}
+
 export interface Campaign {
   campaignName: string;
   country: string;
@@ -41,10 +53,13 @@ export interface Campaign {
   audienceSegments: AudienceSegment[];
   segmentSources?: GroundingSource[];
   productImage?: SupportingDocument;
+  productDetailsUrl?: string;
   targetingGuidelines?: string;
   brandGuidelines?: string;
   performanceGuidelines?: string;
   supportingDocuments?: SupportingDocument[];
   budgetAnalysis?: string;
   budgetSources?: GroundingSource[];
+  competitorAnalysis?: CompetitorAnalysis;
+  marketAnalysis?: string;
 }
