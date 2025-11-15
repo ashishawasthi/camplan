@@ -348,7 +348,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                     {productImageFile ? (
                         <div className="mt-2 relative w-48">
                             <img src={URL.createObjectURL(productImageFile)} alt="Product preview" className="w-full rounded-md shadow-sm"/>
-                            <button type="button" onClick={removeProductImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center font-bold text-sm">&times;</button>
+                            <button type="button" onClick={removeProductImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center font-bold text-sm no-print">&times;</button>
                         </div>
                     ) : (
                         <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
@@ -357,7 +357,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                                 <div className="flex text-sm text-slate-600 dark:text-slate-400">
-                                    <button type="button" onClick={() => productImageInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                    <button type="button" onClick={() => productImageInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 no-print">
                                     <span>Upload an image</span>
                                     </button>
                                     <input ref={productImageInputRef} id="product-image-upload" name="product-image-upload" type="file" className="sr-only" onChange={handleProductImageChange} accept={SUPPORTED_IMAGE_TYPES} />
@@ -378,7 +378,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       <div className="flex text-sm text-slate-600 dark:text-slate-400">
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 no-print">
                           <span>Upload files</span>
                         </button>
                         <input ref={fileInputRef} id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept={SUPPORTED_FILE_TYPES} />
@@ -392,7 +392,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
                       {selectedFiles.map((file, index) => (
                         <div key={index} className="flex items-center justify-between text-sm bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md">
                            <span className="text-slate-700 dark:text-slate-300 truncate pr-2">{file.name}</span>
-                           <button type="button" onClick={() => removeFile(file)} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
+                           <button type="button" onClick={() => removeFile(file)} className="text-red-500 hover:text-red-700 font-bold no-print">&times;</button>
                         </div>
                       ))}
                     </div>
@@ -403,7 +403,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
 
         <div className="flex justify-end">
           <Button type="submit" isLoading={isProcessing}>
-            {isProcessing ? 'Processing...' : 'Define Audience'}
+            {isProcessing ? 'Processing...' : 'Generate Audience Segments'}
           </Button>
         </div>
       </form>

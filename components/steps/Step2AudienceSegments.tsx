@@ -9,12 +9,11 @@ interface Props {
   campaign: Campaign;
   setCampaign: (campaign: Campaign) => void;
   onNext: () => void;
-  onBack: () => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
 
-const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, error, setError }) => {
+const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSegments = useCallback(async () => {
@@ -149,7 +148,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
                     type="checkbox"
                     checked={segment.isSelected ?? false}
                     onChange={() => handleToggleSegment(index)}
-                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer no-print"
                     aria-label={`Select segment ${segment.name}`}
                   />
                 </div>
@@ -202,10 +201,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
           </Card>
       )}
 
-      <div className="mt-8 flex justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          Back
-        </Button>
+      <div className="mt-8 flex justify-end">
         <Button onClick={handleNextWithSelection} disabled={isLoading || !isAnySegmentSelected}>
           Generate Creatives
         </Button>

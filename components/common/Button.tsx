@@ -18,7 +18,7 @@ const Button: React.FC<ButtonProps> = ({ variant = 'primary', children, isLoadin
 
   return (
     <button
-      className={`${baseClasses} ${variantClasses[variant]} ${className}`}
+      className={`${baseClasses} ${variantClasses[variant]} ${className} no-print`}
       disabled={isLoading || props.disabled}
       {...props}
     >

@@ -12,7 +12,6 @@ interface Props {
   campaign: Campaign;
   setCampaign: (campaign: Campaign) => void;
   onNext: () => void;
-  onBack: () => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
@@ -23,7 +22,7 @@ const timeout = (ms: number, message: string) => new Promise((_, reject) => {
   }, ms);
 });
 
-const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, error, setError }) => {
+const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
   const [editingNotification, setEditingNotification] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
   
@@ -149,7 +148,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                   type="checkbox"
                   checked={segment.isSelected ?? false}
                   onChange={() => handleToggleSegment(index)}
-                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer no-print"
                   aria-label={`Select segment ${segment.name}`}
                 />
               </div>
@@ -198,7 +197,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                         alt={`Generated creative for ${segment.name}`}
                         className="object-contain max-h-full max-w-full rounded"
                       />
-                       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity no-print">
                           <button onClick={() => setEditingCreative({ segmentIndex: index, creative })} className="p-1.5 rounded bg-white/80 text-black hover:bg-white shadow-md">
                             <PencilIcon className="h-4 w-4" />
                           </button>
@@ -208,7 +207,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                    <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 h-full">
                       <div className="flex justify-between items-center mb-1">
                           <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Push Notification Text</h4>
-                          <button onClick={() => setEditingNotification({ segmentIndex: index, creative })} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                          <button onClick={() => setEditingNotification({ segmentIndex: index, creative })} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors no-print">
                               <PencilIcon className="h-4 w-4" />
                           </button>
                       </div>
@@ -226,10 +225,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
         })}
       </div>
 
-      <div className="mt-8 flex justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          Back
-        </Button>
+      <div className="mt-8 flex justify-end">
         <Button onClick={handleNextWithSelection} disabled={!canProceed}>
           Allocate Budget
         </Button>

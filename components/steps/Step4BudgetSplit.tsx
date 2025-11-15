@@ -9,12 +9,11 @@ interface Props {
   campaign: Campaign;
   setCampaign: (campaign: Campaign) => void;
   onNext: () => void;
-  onBack: () => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
 
-const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBack, error, setError }) => {
+const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchBudgetSplit = useCallback(async () => {
@@ -193,12 +192,9 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
         </div>
       )}
 
-      <div className="mt-8 flex justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          Back
-        </Button>
+      <div className="mt-8 flex justify-end">
         <Button onClick={onNext} disabled={isLoading || !budgetIsSet}>
-          Review Campaign
+          Finish & View Full Plan
         </Button>
       </div>
     </Card>
