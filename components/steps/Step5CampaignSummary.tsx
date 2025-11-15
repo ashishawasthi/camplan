@@ -27,11 +27,16 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
         markdownContent += `- **Duration:** ${campaign.startDate} to ${campaign.endDate}\n`;
         markdownContent += `- **Landing Page:** ${campaign.landingPageUrl}\n\n---\n\n`;
 
-        if (campaign.budgetAnalysis) {
-            markdownContent += `## 2. Strategic Analysis\n`;
-            markdownContent += `${campaign.budgetAnalysis}\n\n`;
+        markdownContent += `## 2. Strategic Insights\n`;
+        if (campaign.competitorAnalysis?.summary) {
+            markdownContent += `### Competitor Analysis Summary\n${campaign.competitorAnalysis.summary}\n\n`;
         }
-
+        if (campaign.marketAnalysis) {
+            markdownContent += `### Market & Product Analysis\n${campaign.marketAnalysis}\n\n`;
+        }
+        if (campaign.budgetAnalysis) {
+            markdownContent += `### Budget Strategy Rationale\n${campaign.budgetAnalysis}\n\n`;
+        }
         if (campaign.budgetSources && campaign.budgetSources.length > 0) {
             markdownContent += `**Sources:**\n`;
             campaign.budgetSources.forEach(source => {
@@ -39,6 +44,7 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
             });
             markdownContent += `\n`;
         }
+        markdownContent += `\n---\n\n`;
         
         markdownContent += `## 3. Audience Segments & Creatives\n\n`;
 
@@ -49,6 +55,9 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
 
             markdownContent += `### Segment: ${segment.name}\n`;
             markdownContent += `- **Description:** ${segment.description}\n`;
+            if (segment.rationale) {
+                markdownContent += `- **Rationale:** ${segment.rationale}\n`;
+            }
             markdownContent += `- **Key Motivations:**\n`;
             segment.keyMotivations.forEach(m => {
                 markdownContent += `    - ${m}\n`;
@@ -132,6 +141,32 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
           </div>
         </div>
       </Card>
+
+      {(campaign.competitorAnalysis?.summary || campaign.marketAnalysis || campaign.budgetAnalysis) && (
+        <Card className="mb-8 dark:bg-slate-800">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-2 mb-4">Strategic Insights</h3>
+          <div className="space-y-4 text-sm">
+            {campaign.competitorAnalysis?.summary && (
+              <div>
+                <h4 className="font-semibold text-slate-700 dark:text-slate-200">Competitor Analysis Summary</h4>
+                <p className="text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-wrap">{campaign.competitorAnalysis.summary}</p>
+              </div>
+            )}
+            {campaign.marketAnalysis && (
+              <div>
+                <h4 className="font-semibold text-slate-700 dark:text-slate-200">Market & Product Analysis</h4>
+                <p className="text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-wrap">{campaign.marketAnalysis}</p>
+              </div>
+            )}
+            {campaign.budgetAnalysis && (
+              <div>
+                <h4 className="font-semibold text-slate-700 dark:text-slate-200">Budget Strategy Rationale</h4>
+                <p className="text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-wrap">{campaign.budgetAnalysis}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
       
       <div className="space-y-6">
         {campaign.audienceSegments.map((segment, index) => {
@@ -141,12 +176,26 @@ const Step5CampaignSummary: React.FC<Props> = ({ campaign, onBack }) => {
                 <div className="lg:col-span-1">
                   <h4 className="text-lg font-bold text-indigo-700 dark:text-indigo-400">{segment.name}</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">{segment.description}</p>
+                  
+                  {segment.rationale && (
+                    <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        Rationale
+                      </h5>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">{segment.rationale}</p>
+                    </div>
+                  )}
+
                   <div className="mt-4">
                     <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Key Motivations:</h5>
                     <ul className="list-disc list-inside text-sm text-slate-500 dark:text-slate-400 mt-1 space-y-1">
                       {segment.keyMotivations.map((m, i) => <li key={i}>{m}</li>)}
                     </ul>
                   </div>
+
                    {segment.creative?.notificationText && (
                       <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
                           <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Push Notification Text</h4>

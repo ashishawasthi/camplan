@@ -14,8 +14,13 @@ export const getAudienceSegments = async (
   country: string,
   landingPageUrl: string,
   productDetailsUrl?: string,
-  targetingGuidelines?: string,
-  brandGuidelines?: string,
+  importantCustomers?: string,
+  customerSegment?: string,
+  whatToTell?: string,
+  customerAction?: string,
+  productBenefits?: string,
+  customerJob?: string,
+  brandValues?: string,
   supportingDocuments?: SupportingDocument[],
   productImage?: SupportingDocument
 ): Promise<{ segments: AudienceSegment[], sources: GroundingSource[], competitorAnalysis?: CompetitorAnalysis, marketAnalysis?: string }> => {
@@ -64,12 +69,17 @@ export const getAudienceSegments = async (
     6. A separate, short prompt for generating a concise and compelling mobile push notification text for that segment.
   `;
 
-  if (targetingGuidelines) {
-    prompt += `\n\nYour segmentation must be guided by these specific targeting guidelines:\n${targetingGuidelines}`;
-  }
-
-  if (brandGuidelines) {
-    prompt += `\n\nAdditionally, adhere to these brand guidelines for all generated content and prompts:\n${brandGuidelines}`;
+  const creativeBriefParts: string[] = [];
+  if (importantCustomers) creativeBriefParts.push(`- Who is the most important group of customers you want to say this to? ${importantCustomers}`);
+  if (customerSegment) creativeBriefParts.push(`- Which segment does this group of customers belongs to? ${customerSegment}`);
+  if (whatToTell) creativeBriefParts.push(`- What do you want to tell them? ${whatToTell}`);
+  if (customerAction) creativeBriefParts.push(`- What do you want your customers to do / think / feel? ${customerAction}`);
+  if (productBenefits) creativeBriefParts.push(`- What are your product benefits or promotion mechanics? ${productBenefits}`);
+  if (customerJob) creativeBriefParts.push(`- What is the customer job to be done? ${customerJob}`);
+  if (brandValues) creativeBriefParts.push(`- Your campaign demonstrates the following brand values: ${brandValues}`);
+  
+  if (creativeBriefParts.length > 0) {
+    prompt += `\n\nYour segmentation and all generated content must be guided by this creative brief:\n${creativeBriefParts.join('\n')}`;
   }
   
   const contextInstructions: string[] = [];
@@ -257,10 +267,10 @@ export const generateImageFromProduct = async (
   }
 };
 
-export const generateNotificationText = async (prompt: string, landingPageUrl: string, brandGuidelines?: string): Promise<string> => {
+export const generateNotificationText = async (prompt: string, landingPageUrl: string, brandValues?: string): Promise<string> => {
     let fullPrompt = `Generate a concise and compelling mobile push notification text based on the following creative direction: "${prompt}". The notification should entice users to visit the landing page: ${landingPageUrl}.`;
-    if (brandGuidelines) {
-      fullPrompt += `\n\nAdhere to these brand guidelines:\n${brandGuidelines}`;
+    if (brandValues) {
+      fullPrompt += `\n\nAdhere to these brand values: ${brandValues}`;
     }
     fullPrompt += "\n\nThe notification should be short, engaging, and have a clear call to action. Return only the text of the notification, with no extra formatting or labels.";
 
@@ -276,7 +286,7 @@ export const generateNotificationText = async (prompt: string, landingPageUrl: s
     }
 };
 
-export const editNotificationText = async (originalText: string, editPrompt: string, landingPageUrl: string, brandGuidelines?: string): Promise<string> => {
+export const editNotificationText = async (originalText: string, editPrompt: string, landingPageUrl: string, brandValues?: string): Promise<string> => {
     let fullPrompt = `You are an expert copywriter. Your task is to revise a mobile push notification text based on a user's request.
 
 Original notification text:
@@ -287,8 +297,8 @@ User's revision instruction:
 
 The notification should entice users to visit the landing page: ${landingPageUrl}.`;
 
-    if (brandGuidelines) {
-      fullPrompt += `\n\nAdhere to these brand guidelines:\n${brandGuidelines}`;
+    if (brandValues) {
+      fullPrompt += `\n\nAdhere to these brand values: ${brandValues}`;
     }
     
     fullPrompt += "\n\nBased on the instruction, provide the revised notification text. The notification should remain short, engaging, and have a clear call to action. Return only the revised text, with no extra formatting or labels.";
@@ -338,7 +348,8 @@ export const getBudgetSplit = async (
   country: string,
   campaignName: string,
   landingPageUrl: string,
-  performanceGuidelines?: string
+  customerAction?: string,
+  productBenefits?: string
 ): Promise<{ 
   analysis: string; 
   splits: { segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[];
@@ -352,9 +363,18 @@ export const getBudgetSplit = async (
     ${segmentDetails}
   `;
 
+  let performanceGuidelines = '';
+  if (customerAction) {
+    performanceGuidelines += `\n- The primary goal is to make customers do/think/feel: "${customerAction}"`;
+  }
+  if (productBenefits) {
+    performanceGuidelines += `\n- The key offer to drive this is: "${productBenefits}"`;
+  }
+
   if (performanceGuidelines) {
     prompt += `\n\nCrucially, your strategy must be informed by these performance guidelines: ${performanceGuidelines}`;
   }
+
 
   prompt += `
     First, conduct a brief analysis of the current digital marketing landscape and consumer media consumption habits in ${country}, particularly for financial products. Use real-time search to gather recent data and trends. This analysis should justify your budget allocation strategy.

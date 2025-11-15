@@ -27,7 +27,8 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, onBa
         campaign.country,
         campaign.campaignName,
         campaign.landingPageUrl,
-        campaign.performanceGuidelines
+        campaign.customerAction,
+        campaign.productBenefits
       );
 
       const newCampaign = { ...campaign, budgetAnalysis: analysis, budgetSources: sources };

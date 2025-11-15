@@ -54,9 +54,13 @@ export interface Campaign {
   segmentSources?: GroundingSource[];
   productImage?: SupportingDocument;
   productDetailsUrl?: string;
-  targetingGuidelines?: string;
-  brandGuidelines?: string;
-  performanceGuidelines?: string;
+  importantCustomers?: string;
+  customerSegment?: string;
+  whatToTell?: string;
+  customerAction?: string;
+  productBenefits?: string;
+  customerJob?: string;
+  brandValues?: string;
   supportingDocuments?: SupportingDocument[];
   budgetAnalysis?: string;
   budgetSources?: GroundingSource[];

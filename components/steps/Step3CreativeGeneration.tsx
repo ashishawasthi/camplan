@@ -49,7 +49,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
 
       const generationPromise = Promise.all([
         imageGenerationPromise,
-        generateNotificationText(segment.notificationTextPrompt, campaign.landingPageUrl, campaign.brandGuidelines)
+        generateNotificationText(segment.notificationTextPrompt, campaign.landingPageUrl, campaign.brandValues)
       ]);
       
       const [imageResult, notificationText] = await Promise.race([

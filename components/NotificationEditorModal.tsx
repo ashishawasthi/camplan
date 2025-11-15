@@ -29,7 +29,7 @@ const NotificationEditorModal: React.FC<Props> = ({ creative, campaign, onClose,
         originalText, 
         prompt, 
         campaign.landingPageUrl,
-        campaign.brandGuidelines
+        campaign.brandValues
       );
       setEditedText(newText);
     } catch (err) {

@@ -25,14 +25,19 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       const end = new Date(campaign.endDate);
       const durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
       const { segments, sources, competitorAnalysis, marketAnalysis } = await getAudienceSegments(
-        campaign.campaignName, 
-        campaign.totalBudget, 
-        durationDays, 
+        campaign.campaignName,
+        campaign.totalBudget,
+        durationDays,
         campaign.country,
         campaign.landingPageUrl,
         campaign.productDetailsUrl,
-        campaign.targetingGuidelines,
-        campaign.brandGuidelines,
+        campaign.importantCustomers,
+        campaign.customerSegment,
+        campaign.whatToTell,
+        campaign.customerAction,
+        campaign.productBenefits,
+        campaign.customerJob,
+        campaign.brandValues,
         campaign.supportingDocuments,
         campaign.productImage
       );

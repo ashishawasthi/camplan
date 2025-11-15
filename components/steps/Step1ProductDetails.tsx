@@ -35,9 +35,13 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
   const [landingPageUrl, setLandingPageUrl] = useState('');
   const [totalBudget, setTotalBudget] = useState('');
   const [productDetailsUrl, setProductDetailsUrl] = useState('');
-  const [targetingGuidelines, setTargetingGuidelines] = useState('');
-  const [brandGuidelines, setBrandGuidelines] = useState('');
-  const [performanceGuidelines, setPerformanceGuidelines] = useState('');
+  const [importantCustomers, setImportantCustomers] = useState('');
+  const [customerSegment, setCustomerSegment] = useState('');
+  const [whatToTell, setWhatToTell] = useState('');
+  const [customerAction, setCustomerAction] = useState('');
+  const [productBenefits, setProductBenefits] = useState('');
+  const [customerJob, setCustomerJob] = useState('');
+  const [brandValues, setBrandValues] = useState('');
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -108,9 +112,13 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
           totalBudget: parseFloat(totalBudget),
           productImage,
           productDetailsUrl: productDetailsUrl || undefined,
-          targetingGuidelines: targetingGuidelines || undefined,
-          brandGuidelines: brandGuidelines || undefined,
-          performanceGuidelines: performanceGuidelines || undefined,
+          importantCustomers: importantCustomers || undefined,
+          customerSegment: customerSegment || undefined,
+          whatToTell: whatToTell || undefined,
+          customerAction: customerAction || undefined,
+          productBenefits: productBenefits || undefined,
+          customerJob: customerJob || undefined,
+          brandValues: brandValues || undefined,
           supportingDocuments: supportingDocuments.length > 0 ? supportingDocuments : undefined,
         });
       } catch (error) {
@@ -223,117 +231,173 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
         
         {/* -- Optional Context -- */}
         <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
-            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Guidelines & Context (Optional)</h3>
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Creative Brief (Optional)</h3>
             <div>
-              <label htmlFor="targetingGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Targeting Guidelines
+              <label htmlFor="importantCustomers" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                1. Who is the most important group of customers you want to say this to?
               </label>
               <textarea
-                id="targetingGuidelines"
-                rows={4}
-                value={targetingGuidelines}
-                onChange={(e) => setTargetingGuidelines(e.target.value)}
+                id="importantCustomers"
+                rows={2}
+                value={importantCustomers}
+                onChange={(e) => setImportantCustomers(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
-                placeholder={`e.g.,\n- Focus on young professionals aged 25-35.\n- Exclude existing customers who already have a credit card with us.\n- Prioritize users interested in travel and dining.`}
-              />
-            </div>
-            <div>
-              <label htmlFor="brandGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Brand Guidelines
-              </label>
-              <textarea
-                id="brandGuidelines"
-                rows={4}
-                value={brandGuidelines}
-                onChange={(e) => setBrandGuidelines(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
-                placeholder={`e.g.,\n- Tone: friendly, reassuring, and professional.\n- Visuals: Use warm colors, avoid stock photos of models.\n- Exclude imagery related to gambling or alcohol.`}
-              />
-            </div>
-            <div>
-              <label htmlFor="performanceGuidelines" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Spend Guidelines
-              </label>
-              <textarea
-                id="performanceGuidelines"
-                rows={4}
-                value={performanceGuidelines}
-                onChange={(e) => setPerformanceGuidelines(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
-                placeholder={`e.g.,\n- Primary KPI is new account sign-ups.\n- Prioritize segments with high engagement on Instagram.\n- Allocate more budget towards the end of the campaign period.`}
-              />
-            </div>
-            <div>
-              <label htmlFor="productDetailsUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Product Details URL
-              </label>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Provide a link to the product page for more detailed analysis and competitor research.</p>
-              <input
-                type="url"
-                id="productDetailsUrl"
-                value={productDetailsUrl}
-                onChange={(e) => setProductDetailsUrl(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
-                placeholder="https://yourbank.com/products/your-credit-card"
+                placeholder="e.g., Young professionals aged 25-35"
               />
             </div>
              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Product Image
-                </label>
-                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Upload an image of your product to feature it in the generated ad creatives.</p>
-                {productImageFile ? (
-                    <div className="mt-2 relative w-48">
-                        <img src={URL.createObjectURL(productImageFile)} alt="Product preview" className="w-full rounded-md shadow-sm"/>
-                        <button type="button" onClick={removeProductImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center font-bold text-sm">&times;</button>
-                    </div>
-                ) : (
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
-                        <div className="space-y-1 text-center">
-                            <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            <div className="flex text-sm text-slate-600 dark:text-slate-400">
-                                <button type="button" onClick={() => productImageInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                                <span>Upload an image</span>
-                                </button>
-                                <input ref={productImageInputRef} id="product-image-upload" name="product-image-upload" type="file" className="sr-only" onChange={handleProductImageChange} accept={SUPPORTED_IMAGE_TYPES} />
-                            </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG up to 10MB</p>
-                        </div>
-                    </div>
-                )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Supporting Documents
+              <label htmlFor="customerSegment" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                2. Which segment does this group of customers belongs to?
               </label>
-               <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Provide any extra documents (e.g., creative briefs, product descriptions) for context.</p>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
-                <div className="space-y-1 text-center">
-                   <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  <div className="flex text-sm text-slate-600 dark:text-slate-400">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                      <span>Upload files</span>
-                    </button>
-                    <input ref={fileInputRef} id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept={SUPPORTED_FILE_TYPES} />
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">JPG, PNG, WEBP, PDF, TXT</p>
+              <textarea
+                id="customerSegment"
+                rows={2}
+                value={customerSegment}
+                onChange={(e) => setCustomerSegment(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder="e.g., 'Ambitious Achievers', 'Travel Enthusiasts', existing affluent customers."
+              />
+            </div>
+             <div>
+              <label htmlFor="whatToTell" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                3. What do you want to tell them?
+              </label>
+              <textarea
+                id="whatToTell"
+                rows={2}
+                value={whatToTell}
+                onChange={(e) => setWhatToTell(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder="e.g., Our new credit card offers the best travel rewards and exclusive dining perks."
+              />
+            </div>
+             <div>
+              <label htmlFor="customerAction" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                4. What do you want your customers to do / think / feel?
+              </label>
+              <textarea
+                id="customerAction"
+                rows={2}
+                value={customerAction}
+                onChange={(e) => setCustomerAction(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder="e.g., Sign up for the new card, feel excited about their next trip, feel smart about their finances."
+              />
+            </div>
+             <div>
+              <label htmlFor="productBenefits" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                5. What are your product benefits or promotion mechanics?
+              </label>
+              <textarea
+                id="productBenefits"
+                rows={2}
+                value={productBenefits}
+                onChange={(e) => setProductBenefits(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder="e.g., 5% cashback on flights, no annual fee for the first year, complimentary lounge access."
+              />
+            </div>
+             <div>
+              <label htmlFor="customerJob" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                6. What is the customer job to be done?
+              </label>
+              <textarea
+                id="customerJob"
+                rows={2}
+                value={customerJob}
+                onChange={(e) => setCustomerJob(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder="e.g., To save money on their next vacation, to simplify their expense tracking."
+              />
+            </div>
+             <div>
+              <label htmlFor="brandValues" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                7. Your campaign demonstrates the following brand values:
+              </label>
+              <textarea
+                id="brandValues"
+                rows={2}
+                value={brandValues}
+                onChange={(e) => setBrandValues(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                placeholder="e.g., Empowerment, reliability, innovation, customer-centric."
+              />
+            </div>
+
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
+                 <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Additional Context (Optional)</h3>
+                <div>
+                  <label htmlFor="productDetailsUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Product Details URL
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Provide a link to the product page for more detailed analysis and competitor research.</p>
+                  <input
+                    type="url"
+                    id="productDetailsUrl"
+                    value={productDetailsUrl}
+                    onChange={(e) => setProductDetailsUrl(e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
+                    placeholder="https://yourbank.com/products/your-credit-card"
+                  />
                 </div>
-              </div>
-               {selectedFiles.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md">
-                       <span className="text-slate-700 dark:text-slate-300 truncate pr-2">{file.name}</span>
-                       <button type="button" onClick={() => removeFile(file)} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
+                 <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Product Image
+                    </label>
+                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Upload an image of your product to feature it in the generated ad creatives.</p>
+                    {productImageFile ? (
+                        <div className="mt-2 relative w-48">
+                            <img src={URL.createObjectURL(productImageFile)} alt="Product preview" className="w-full rounded-md shadow-sm"/>
+                            <button type="button" onClick={removeProductImage} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center font-bold text-sm">&times;</button>
+                        </div>
+                    ) : (
+                        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
+                            <div className="space-y-1 text-center">
+                                <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                <div className="flex text-sm text-slate-600 dark:text-slate-400">
+                                    <button type="button" onClick={() => productImageInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                    <span>Upload an image</span>
+                                    </button>
+                                    <input ref={productImageInputRef} id="product-image-upload" name="product-image-upload" type="file" className="sr-only" onChange={handleProductImageChange} accept={SUPPORTED_IMAGE_TYPES} />
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-500">PNG, JPG up to 10MB</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Supporting Documents
+                  </label>
+                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Provide any extra documents (e.g., creative briefs, product descriptions) for context.</p>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-md">
+                    <div className="space-y-1 text-center">
+                       <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      <div className="flex text-sm text-slate-600 dark:text-slate-400">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                          <span>Upload files</span>
+                        </button>
+                        <input ref={fileInputRef} id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept={SUPPORTED_FILE_TYPES} />
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">JPG, PNG, WEBP, PDF, TXT</p>
                     </div>
-                  ))}
+                  </div>
+                   {selectedFiles.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between text-sm bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md">
+                           <span className="text-slate-700 dark:text-slate-300 truncate pr-2">{file.name}</span>
+                           <button type="button" onClick={() => removeFile(file)} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
             </div>
         </div>
 
