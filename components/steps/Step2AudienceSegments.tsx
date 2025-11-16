@@ -112,7 +112,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       ) : (
         <>
           {campaign.competitorAnalysis && (
-            <Card className="mb-8 max-w-5xl mx-auto">
+            <Card className="mb-8 max-w-6xl mx-auto">
               <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Competitor Analysis</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{campaign.competitorAnalysis.summary}</p>
               <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
@@ -146,75 +146,76 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
           )}
 
           {campaign.marketAnalysis && (
-            <Card className="mb-8 max-w-5xl mx-auto print-break-before">
+            <Card className="mb-8 max-w-6xl mx-auto print-break-before">
               <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Market & Product Analysis</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{campaign.marketAnalysis}</p>
             </Card>
           )}
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center print-break-before">
+              <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Target Audience Segments</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Review, edit, and select the segments you want to target for this campaign.</p>
+              <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
+                  <SparklesIcon className="w-4 h-4 mr-2" />
+                  Regenerate Segments
+              </Button>
+            </div>
 
-          <div className="text-center print-break-before">
-            <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Target Audience Segments</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Review, edit, and select the segments you want to target for this campaign.</p>
-            <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
-                <SparklesIcon className="w-4 h-4 mr-2" />
-                Regenerate Segments
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {campaign.audienceSegments.map((segment, index) => (
-              <Card key={index} className="flex flex-col segment-card">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 pr-2">{segment.name}</h3>
-                  <input
-                    type="checkbox"
-                    checked={segment.isSelected ?? false}
-                    onChange={() => handleToggleSegment(index)}
-                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer no-print"
-                    aria-label={`Select segment ${segment.name}`}
-                  />
-                </div>
-                
-                <div className="relative group mt-2">
-                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{segment.description}</p>
-                     <button
-                        onClick={() => setEditingState({ index, field: 'description', value: segment.description })}
-                        className="absolute top-0 right-0 p-1 rounded-full text-slate-400 bg-slate-100 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                        aria-label={`Edit description for ${segment.name}`}
-                    >
-                        <PencilIcon className="h-4 w-4" />
-                    </button>
-                </div>
-                
-                {segment.rationale && (
-                  <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                          </svg>
-                          Rationale
-                      </h4>
-                       <div className="relative group mt-2">
-                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">{segment.rationale}</p>
-                            <button
-                                onClick={() => setEditingState({ index, field: 'rationale', value: segment.rationale ?? '' })}
-                                className="absolute top-0 right-0 p-1 rounded-full text-slate-400 bg-slate-200 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                                aria-label={`Edit rationale for ${segment.name}`}
-                            >
-                                <PencilIcon className="h-4 w-4" />
-                            </button>
-                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {campaign.audienceSegments.map((segment, index) => (
+                <Card key={index} className="flex flex-col segment-card">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 pr-2">{segment.name}</h3>
+                    <input
+                      type="checkbox"
+                      checked={segment.isSelected ?? false}
+                      onChange={() => handleToggleSegment(index)}
+                      className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer no-print"
+                      aria-label={`Select segment ${segment.name}`}
+                    />
                   </div>
-                )}
+                  
+                  <div className="relative group mt-2">
+                      <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{segment.description}</p>
+                       <button
+                          onClick={() => setEditingState({ index, field: 'description', value: segment.description })}
+                          className="absolute top-0 right-0 p-1 rounded-full text-slate-400 bg-slate-100 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                          aria-label={`Edit description for ${segment.name}`}
+                      >
+                          <PencilIcon className="h-4 w-4" />
+                      </button>
+                  </div>
+                  
+                  {segment.rationale && (
+                    <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            Rationale
+                        </h4>
+                         <div className="relative group mt-2">
+                              <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">{segment.rationale}</p>
+                              <button
+                                  onClick={() => setEditingState({ index, field: 'rationale', value: segment.rationale ?? '' })}
+                                  className="absolute top-0 right-0 p-1 rounded-full text-slate-400 bg-slate-200 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                                  aria-label={`Edit rationale for ${segment.name}`}
+                              >
+                                  <PencilIcon className="h-4 w-4" />
+                              </button>
+                          </div>
+                    </div>
+                  )}
 
-                <div className="mt-4 flex-grow">
-                  <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Key Motivations:</h4>
-                  <ul className="list-disc list-inside text-sm text-slate-500 dark:text-slate-400 mt-1 space-y-1">
-                    {segment.keyMotivations.map((m, i) => <li key={i}>{m}</li>)}
-                  </ul>
-                </div>
-              </Card>
-            ))}
+                  <div className="mt-4 flex-grow">
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Key Motivations:</h4>
+                    <ul className="list-disc list-inside text-sm text-slate-500 dark:text-slate-400 mt-1 space-y-1">
+                      {segment.keyMotivations.map((m, i) => <li key={i}>{m}</li>)}
+                    </ul>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -241,7 +242,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       )}
 
       {!isLoading && hasSegments && campaign.segmentSources && campaign.segmentSources.length > 0 && (
-          <Card className="mt-8 max-w-4xl mx-auto">
+          <Card className="mt-8 max-w-6xl mx-auto">
               <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Sources</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">The following web pages were used to inform the analysis and segmentation.</p>
               <ul className="list-disc list-inside space-y-1">
@@ -256,11 +257,13 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
           </Card>
       )}
 
-      <div className="mt-8 flex justify-end">
-        <Button onClick={handleNextWithSelection} disabled={isLoading || !isAnySegmentSelected}>
-          Ad Creatives
-        </Button>
-      </div>
+      {!isLoading && hasSegments && (
+        <div className="mt-8 flex justify-end max-w-6xl mx-auto">
+          <Button onClick={handleNextWithSelection} disabled={!isAnySegmentSelected}>
+            Ad Creatives
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

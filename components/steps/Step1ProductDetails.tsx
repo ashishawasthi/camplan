@@ -167,7 +167,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
       submittedData.brandValues;
 
     return (
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-4 border-b border-slate-200 dark:border-slate-700 pb-4">
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">Campaign Details</h2>
             <Button variant="ghost" onClick={() => setIsSubmitted(false)} className="no-print">
@@ -216,7 +216,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
   }
 
   return (
-    <Card className="max-w-2xl mx-auto">
+    <Card className="max-w-6xl mx-auto">
       <div className="no-print">
         <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Campaign Details</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Let's start by defining the basics of your new campaign.</p>

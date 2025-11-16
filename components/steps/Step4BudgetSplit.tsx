@@ -108,7 +108,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
   const budgetIsSet = campaign.audienceSegments.every(s => typeof s.budget === 'number');
 
   return (
-    <Card className="max-w-4xl mx-auto">
+    <Card className="max-w-6xl mx-auto">
       <div className="text-center">
         <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Budget Allocation</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Here's a suggested budget split for your campaign, based on market analysis.</p>
