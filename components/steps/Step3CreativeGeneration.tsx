@@ -4,7 +4,6 @@ import { generateImagenImage, generateImageFromProduct } from '../../services/ge
 import Button from '../common/Button';
 import Card from '../common/Card';
 import ImageEditorModal from '../ImageEditorModal';
-import NotificationEditorModal from '../NotificationEditorModal';
 import { SparklesIcon } from '../icons/SparklesIcon';
 import { PencilIcon } from '../icons/PencilIcon';
 import RegenerateModal from '../common/RegenerateModal';
@@ -25,7 +24,6 @@ const timeout = (ms: number, message: string) => new Promise((_, reject) => {
 
 const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
-  const [editingNotification, setEditingNotification] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
   const [regenState, setRegenState] = useState<{ segmentIndex: number } | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{ [key: number]: { imgIndex: number, notifIndex: number }}>({});
 
@@ -99,13 +97,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     newCampaign.audienceSegments[segmentIndex].creative = newCreative;
     setCampaign(newCampaign);
     setEditingCreative(null);
-  };
-  
-  const handleSaveNotificationEdit = (segmentIndex: number, newCreative: Creative) => {
-    const newCampaign = { ...campaign, audienceSegments: [...campaign.audienceSegments] };
-    newCampaign.audienceSegments[segmentIndex].creative = newCreative;
-    setCampaign(newCampaign);
-    setEditingNotification(null);
   };
 
   const handleToggleSegment = (index: number) => {
@@ -220,12 +211,12 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                <div className="mt-4 flex justify-end">
                     <button 
                         onClick={() => setRegenState({ segmentIndex: index })} 
-                        className="inline-flex items-center justify-center p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed no-print shadow-sm"
+                        className="inline-flex items-center justify-center p-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed no-print shadow-sm"
                         title={creative?.imageUrl ? 'Regenerate creative' : 'Generate creative'}
                         disabled={creative?.isGenerating}
                     >
                          {creative?.isGenerating 
-                            ? <div className="animate-spin h-5 w-5 border-2 border-white/50 border-t-white rounded-full" />
+                            ? <div className="animate-spin h-5 w-5 border-2 border-indigo-700/50 border-t-indigo-700 rounded-full" />
                             : <SparklesIcon className="h-5 w-5" />
                         }
                     </button>
@@ -241,8 +232,8 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
               )}
 
               {creative && !creative.isGenerating && creative.imageUrl && (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                    <div className="bg-slate-100 dark:bg-slate-800/50 rounded-lg p-2 relative group w-full flex items-center justify-center transition-all duration-300 aspect-square">
+                <div className="mt-4">
+                    <div className="bg-slate-100 dark:bg-slate-800/50 rounded-lg p-2 relative group w-full max-w-md mx-auto flex items-center justify-center transition-all duration-300 aspect-square">
                       <img
                         src={creative.imageUrl}
                         alt={`Generated creative for ${segment.name}`}
@@ -254,21 +245,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                           </button>
                       </div>
                     </div>
-                    
-                   <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 h-full">
-                      <div className="flex justify-between items-center mb-1">
-                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Push Notification Text</h4>
-                          <button onClick={() => setEditingNotification({ segmentIndex: index, creative })} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors no-print">
-                              <PencilIcon className="h-4 w-4" />
-                          </button>
-                      </div>
-                      <p 
-                        className="w-full text-sm text-slate-600 dark:text-slate-300 bg-transparent p-0"
-                        aria-label={`Notification text for ${segment.name}`}
-                      >
-                        {creative.notificationText}
-                      </p>
-                   </div>
                 </div>
               )}
             </Card>
@@ -300,15 +276,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
         />
       )}
 
-      {editingNotification && (
-        <NotificationEditorModal
-          creative={editingNotification.creative}
-          campaign={campaign}
-          onClose={() => setEditingNotification(null)}
-          onSave={(newCreative) => handleSaveNotificationEdit(editingNotification.segmentIndex, newCreative)}
-          setError={setError}
-        />
-      )}
     </div>
   );
 };

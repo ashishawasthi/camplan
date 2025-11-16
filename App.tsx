@@ -192,12 +192,12 @@ const App: React.FC = () => {
       {isDetailsSubmitted && campaign && (
          <footer className="sticky bottom-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-[0_-2px_5px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-slate-700 p-4 no-print">
             <div className="max-w-7xl mx-auto flex justify-end items-center gap-4">
-                 <Button variant="secondary" onClick={() => window.print()}>
-                    Print to PDF
-                 </Button>
-                 <Button onClick={handleExport} isLoading={isExporting}>
+                 <Button variant="secondary" onClick={handleExport} isLoading={isExporting}>
                     {isExporting ? 'Exporting...' : 'Export as ZIP'}
                 </Button>
+                 <Button variant="primary" onClick={() => window.print()}>
+                    Print to PDF
+                 </Button>
             </div>
          </footer>
       )}
