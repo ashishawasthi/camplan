@@ -2,8 +2,8 @@ export interface AudienceSegment {
   name: string;
   description: string;
   keyMotivations: string[];
-  imagePrompt: string;
-  notificationTextPrompt: string;
+  imagePrompts: string[];
+  notificationTexts: string[];
   isSelected?: boolean;
   creative?: Creative;
   budget?: number;

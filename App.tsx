@@ -16,7 +16,6 @@ const App: React.FC = () => {
   const [isDetailsSubmitted, setIsDetailsSubmitted] = useState(false);
   const [isAudienceCompleted, setIsAudienceCompleted] = useState(false);
   const [isCreativeCompleted, setIsCreativeCompleted] = useState(false);
-  const [isBudgetCompleted, setIsBudgetCompleted] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
   const updateCampaign = useCallback((updatedCampaign: Campaign) => {
@@ -30,7 +29,6 @@ const App: React.FC = () => {
     // Reset subsequent steps if details are re-submitted
     setIsAudienceCompleted(false);
     setIsCreativeCompleted(false);
-    setIsBudgetCompleted(false);
     // Scroll to the next section
     setTimeout(() => {
         document.getElementById('step-2-container')?.scrollIntoView({ behavior: 'smooth' });
@@ -51,11 +49,6 @@ const App: React.FC = () => {
     setTimeout(() => {
         document.getElementById('step-4-container')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
-  };
-  
-  const handleBudgetComplete = () => {
-    setError(null);
-    setIsBudgetCompleted(true);
   };
   
   const handleExport = async () => {
@@ -91,41 +84,45 @@ const App: React.FC = () => {
         }
         markdownContent += `\n---\n\n`;
         
-        markdownContent += `## 3. Audience Segments & Creatives\n\n`;
+        if (campaign.audienceSegments.length > 0) {
+            markdownContent += `## 3. Audience Segments & Creatives\n\n`;
 
-        // 2. Loop through segments
-        for (const segment of campaign.audienceSegments) {
-            const segmentFolderName = segment.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-            const segmentFolder = zip.folder(segmentFolderName);
+            // 2. Loop through segments
+            for (const segment of campaign.audienceSegments) {
+                const segmentFolderName = segment.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+                const segmentFolder = zip.folder(segmentFolderName);
 
-            markdownContent += `### Segment: ${segment.name}\n`;
-            markdownContent += `- **Description:** ${segment.description}\n`;
-            if (segment.rationale) {
-                markdownContent += `- **Rationale:** ${segment.rationale}\n`;
-            }
-            markdownContent += `- **Key Motivations:**\n`;
-            segment.keyMotivations.forEach(m => {
-                markdownContent += `    - ${m}\n`;
-            });
-            markdownContent += `- **Allocated Budget:** $${(segment.budget || 0).toLocaleString()}\n`;
-            if (segment.creative?.notificationText) {
-                markdownContent += `- **Push Notification Text:** "${segment.creative.notificationText}"\n`;
-            }
-            if (segment.mediaSplit && segment.mediaSplit.length > 0) {
-                 markdownContent += `- **Media Split:**\n\n`;
-                 markdownContent += `| Channel   | Budget      |\n`;
-                 markdownContent += `|-----------|-------------|\n`;
-                 segment.mediaSplit.forEach(media => {
-                     markdownContent += `| ${media.channel} | $${media.budget.toLocaleString()} |\n`;
-                 });
-                 markdownContent += `\n`;
-            }
-            markdownContent += `\n---\n\n`;
+                markdownContent += `### Segment: ${segment.name}\n`;
+                markdownContent += `- **Description:** ${segment.description}\n`;
+                if (segment.rationale) {
+                    markdownContent += `- **Rationale:** ${segment.rationale}\n`;
+                }
+                markdownContent += `- **Key Motivations:**\n`;
+                segment.keyMotivations.forEach(m => {
+                    markdownContent += `    - ${m}\n`;
+                });
+                if (segment.budget) {
+                    markdownContent += `- **Allocated Budget:** $${(segment.budget || 0).toLocaleString()}\n`;
+                }
+                if (segment.creative?.notificationText) {
+                    markdownContent += `- **Push Notification Text:** "${segment.creative.notificationText}"\n`;
+                }
+                if (segment.mediaSplit && segment.mediaSplit.length > 0) {
+                     markdownContent += `- **Media Split:**\n\n`;
+                     markdownContent += `| Channel   | Budget      |\n`;
+                     markdownContent += `|-----------|-------------|\n`;
+                     segment.mediaSplit.forEach(media => {
+                         markdownContent += `| ${media.channel} | $${media.budget.toLocaleString()} |\n`;
+                     });
+                     markdownContent += `\n`;
+                }
+                markdownContent += `\n---\n\n`;
 
-            if (segment.creative?.imageUrl) {
-                const imageData = segment.creative.imageUrl.split('base64,')[1];
-                if (imageData) {
-                    segmentFolder.file('creative.jpeg', imageData, { base64: true });
+                if (segment.creative?.imageUrl) {
+                    const imageData = segment.creative.imageUrl.split('base64,')[1];
+                    if (imageData) {
+                        segmentFolder.file('creative.jpeg', imageData, { base64: true });
+                    }
                 }
             }
         }
@@ -186,25 +183,24 @@ const App: React.FC = () => {
 
         {isCreativeCompleted && campaign && (
             <div id="step-4-container" className="printable-section mt-12 pt-8 border-t-2 border-dashed border-slate-300 dark:border-slate-700">
-                <Step4BudgetSplit campaign={campaign} setCampaign={updateCampaign} onNext={handleBudgetComplete} error={error} setError={setError} />
+                <Step4BudgetSplit campaign={campaign} setCampaign={updateCampaign} error={error} setError={setError} />
             </div>
         )}
         
-        {isBudgetCompleted && campaign && (
-             <div className="printable-section mt-12 pt-8 border-t-2 border-dashed border-slate-300 dark:border-slate-700 text-center">
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Campaign Plan Complete</h2>
-                <p className="text-slate-500 dark:text-slate-400 mt-2">Your campaign plan for "{campaign.campaignName}" is ready. You can now print this page to PDF or export all assets as a ZIP file.</p>
-                <div className="mt-6 flex justify-center gap-4">
-                     <Button variant="secondary" onClick={() => window.print()}>
-                        Print to PDF
-                     </Button>
-                     <Button onClick={handleExport} isLoading={isExporting}>
-                        {isExporting ? 'Exporting...' : 'Export as ZIP'}
-                    </Button>
-                </div>
-             </div>
-        )}
       </main>
+      
+      {isDetailsSubmitted && campaign && (
+         <footer className="sticky bottom-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-[0_-2px_5px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-slate-700 p-4 no-print">
+            <div className="max-w-7xl mx-auto flex justify-end items-center gap-4">
+                 <Button variant="secondary" onClick={() => window.print()}>
+                    Print to PDF
+                 </Button>
+                 <Button onClick={handleExport} isLoading={isExporting}>
+                    {isExporting ? 'Exporting...' : 'Export as ZIP'}
+                </Button>
+            </div>
+         </footer>
+      )}
     </div>
   );
 };

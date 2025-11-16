@@ -4,6 +4,10 @@ import { getAudienceSegments } from '../../services/geminiService';
 import Button from '../common/Button';
 import Card from '../common/Card';
 import Loader from '../common/Loader';
+import TextEditorModal from '../common/TextEditorModal';
+import RegenerateModal from '../common/RegenerateModal';
+import { PencilIcon } from '../icons/PencilIcon';
+import { SparklesIcon } from '../icons/SparklesIcon';
 
 interface Props {
   campaign: Campaign;
@@ -13,10 +17,18 @@ interface Props {
   setError: (error: string | null) => void;
 }
 
+type EditingState = {
+    index: number;
+    field: 'description' | 'rationale';
+    value: string;
+}
+
 const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [editingState, setEditingState] = useState<EditingState | null>(null);
+  const [showRegenModal, setShowRegenModal] = useState(false);
 
-  const fetchSegments = useCallback(async () => {
+  const fetchSegments = useCallback(async (instructions?: string) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -38,7 +50,8 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         campaign.customerJob,
         campaign.brandValues,
         campaign.supportingDocuments,
-        campaign.productImage
+        campaign.productImage,
+        instructions
       );
       setCampaign({ ...campaign, audienceSegments: segments, segmentSources: sources, competitorAnalysis, marketAnalysis });
     } catch (err) {
@@ -61,18 +74,21 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
     setCampaign({ ...campaign, audienceSegments: newSegments });
   };
 
-  const handleDescriptionChange = (index: number, newDescription: string) => {
+  const handleTextChange = (index: number, field: 'description' | 'rationale', newValue: string) => {
       const newSegments = [...campaign.audienceSegments];
-      newSegments[index] = { ...newSegments[index], description: newDescription };
+      newSegments[index] = { ...newSegments[index], [field]: newValue };
       setCampaign({ ...campaign, audienceSegments: newSegments });
   };
   
   const handleNextWithSelection = () => {
-    // We update the campaign state with only the selected segments before moving on
     const selectedSegments = campaign.audienceSegments.filter(s => s.isSelected);
-    // Keep other campaign properties like sources and competitor analysis
     setCampaign({ ...campaign, audienceSegments: selectedSegments });
     onNext();
+  };
+  
+  const handleRegenerate = async (instructions: string) => {
+    setShowRegenModal(false);
+    await fetchSegments(instructions);
   };
 
   const hasSegments = campaign.audienceSegments.length > 0;
@@ -89,7 +105,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
             </svg>
             <h3 className="text-lg font-semibold text-red-600 mt-4">Failed to Get Segments</h3>
             <p className="text-slate-500 mt-2 mb-6">{error}</p>
-            <Button onClick={fetchSegments} isLoading={isLoading}>
+            <Button onClick={() => fetchSegments()} isLoading={isLoading}>
                 Try Again
             </Button>
         </Card>
@@ -136,8 +152,14 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
             </Card>
           )}
 
-          <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Target Audience Segments</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 text-center">Review, edit, and select the segments you want to target for this campaign.</p>
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Target Audience Segments</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Review, edit, and select the segments you want to target for this campaign.</p>
+            <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
+                <SparklesIcon className="w-4 h-4 mr-2" />
+                Regenerate Segments
+            </Button>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {campaign.audienceSegments.map((segment, index) => (
@@ -152,14 +174,17 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
                     aria-label={`Select segment ${segment.name}`}
                   />
                 </div>
-
-                <textarea
-                  value={segment.description}
-                  onChange={(e) => handleDescriptionChange(index, e.target.value)}
-                  className="text-sm text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 w-full resize-none"
-                  rows={6}
-                  aria-label={`Description for ${segment.name}`}
-                />
+                
+                <div className="relative group mt-2">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{segment.description}</p>
+                     <button
+                        onClick={() => setEditingState({ index, field: 'description', value: segment.description })}
+                        className="absolute top-0 right-0 p-1 rounded-full text-slate-400 bg-slate-100 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                        aria-label={`Edit description for ${segment.name}`}
+                    >
+                        <PencilIcon className="h-4 w-4" />
+                    </button>
+                </div>
                 
                 {segment.rationale && (
                   <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -169,7 +194,16 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
                           </svg>
                           Rationale
                       </h4>
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">{segment.rationale}</p>
+                       <div className="relative group mt-2">
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">{segment.rationale}</p>
+                            <button
+                                onClick={() => setEditingState({ index, field: 'rationale', value: segment.rationale ?? '' })}
+                                className="absolute top-0 right-0 p-1 rounded-full text-slate-400 bg-slate-200 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                                aria-label={`Edit rationale for ${segment.name}`}
+                            >
+                                <PencilIcon className="h-4 w-4" />
+                            </button>
+                        </div>
                   </div>
                 )}
 
@@ -183,6 +217,27 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
             ))}
           </div>
         </>
+      )}
+      
+      {editingState && (
+        <TextEditorModal
+            title={`Edit ${editingState.field}`}
+            initialValue={editingState.value}
+            onClose={() => setEditingState(null)}
+            onSave={(newValue) => {
+                handleTextChange(editingState.index, editingState.field, newValue);
+                setEditingState(null);
+            }}
+        />
+      )}
+
+      {showRegenModal && (
+        <RegenerateModal 
+            title="Regenerate Audience Segments"
+            onClose={() => setShowRegenModal(false)}
+            onGenerate={handleRegenerate}
+            isLoading={isLoading}
+        />
       )}
 
       {!isLoading && hasSegments && campaign.segmentSources && campaign.segmentSources.length > 0 && (
@@ -203,7 +258,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
 
       <div className="mt-8 flex justify-end">
         <Button onClick={handleNextWithSelection} disabled={isLoading || !isAnySegmentSelected}>
-          Generate Creatives
+          Ad Creatives
         </Button>
       </div>
     </div>

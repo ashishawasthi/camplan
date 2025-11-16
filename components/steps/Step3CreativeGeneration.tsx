@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Campaign, Creative } from '../../types';
-import { generateImagenImage, generateNotificationText, generateImageFromProduct } from '../../services/geminiService';
+import { generateImagenImage, generateImageFromProduct } from '../../services/geminiService';
 import Button from '../common/Button';
 import Card from '../common/Card';
 import ImageEditorModal from '../ImageEditorModal';
 import NotificationEditorModal from '../NotificationEditorModal';
 import { SparklesIcon } from '../icons/SparklesIcon';
 import { PencilIcon } from '../icons/PencilIcon';
+import RegenerateModal from '../common/RegenerateModal';
 
 interface Props {
   campaign: Campaign;
@@ -25,16 +26,37 @@ const timeout = (ms: number, message: string) => new Promise((_, reject) => {
 const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
   const [editingNotification, setEditingNotification] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
+  const [regenState, setRegenState] = useState<{ segmentIndex: number } | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<{ [key: number]: { imgIndex: number, notifIndex: number }}>({});
+
+  useEffect(() => {
+    const initialOptions: { [key: number]: { imgIndex: number, notifIndex: number }} = {};
+    campaign.audienceSegments.forEach((_, index) => {
+        initialOptions[index] = { imgIndex: 0, notifIndex: 0 };
+    });
+    setSelectedOptions(initialOptions);
+  }, [campaign.audienceSegments]);
   
-  const handleGenerateCreative = async (segmentIndex: number) => {
+  const handleOptionChange = (segmentIndex: number, type: 'imgIndex' | 'notifIndex', value: number) => {
+    setSelectedOptions(prev => ({
+      ...prev,
+      [segmentIndex]: {
+        ...(prev[segmentIndex] || { imgIndex: 0, notifIndex: 0 }),
+        [type]: value,
+      }
+    }));
+  };
+  
+  const handleGenerateCreative = async (segmentIndex: number, instructions?: string) => {
     setError(null);
     const segment = campaign.audienceSegments[segmentIndex];
+    const imagePrompt = segment.imagePrompts[selectedOptions[segmentIndex]?.imgIndex ?? 0];
+    const notificationText = segment.notificationTexts[selectedOptions[segmentIndex]?.notifIndex ?? 0];
     
     // Set loading state
     const newCampaign = { ...campaign, audienceSegments: [...campaign.audienceSegments] };
     const segmentToUpdate = newCampaign.audienceSegments[segmentIndex];
     const existingCreative = segmentToUpdate.creative;
-    // Provide a full creative object structure for the loading state to avoid type issues
     segmentToUpdate.creative = {
         ...(existingCreative || { id: '', imagePrompt: '', notificationText: '', imageUrl: '', mimeType: ''}),
         isGenerating: true,
@@ -43,22 +65,17 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
 
     try {
       const imageGenerationPromise = campaign.productImage
-        ? generateImageFromProduct(campaign.productImage, segment.imagePrompt)
-        : generateImagenImage(segment.imagePrompt);
+        ? generateImageFromProduct(campaign.productImage, imagePrompt, instructions)
+        : generateImagenImage(imagePrompt, instructions);
 
-      const generationPromise = Promise.all([
-        imageGenerationPromise,
-        generateNotificationText(segment.notificationTextPrompt, campaign.landingPageUrl, campaign.brandValues)
-      ]);
-      
-      const [imageResult, notificationText] = await Promise.race([
-          generationPromise,
-          timeout(90000, 'Creative generation timed out after 90 seconds. Please try again.')
-      ]) as [{ base64: string; mimeType: string }, string];
+      const imageResult = await Promise.race([
+          imageGenerationPromise,
+          timeout(90000, 'Image generation timed out after 90 seconds. Please try again.')
+      ]) as { base64: string; mimeType: string };
       
       const newCreative: Creative = {
         id: new Date().toISOString(),
-        imagePrompt: segment.imagePrompt,
+        imagePrompt,
         notificationText,
         imageUrl: `data:${imageResult.mimeType};base64,${imageResult.base64}`,
         mimeType: imageResult.mimeType,
@@ -77,13 +94,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     }
   };
   
-  const handleImagePromptChange = (segmentIndex: number, newPrompt: string) => {
-    const newCampaign = { ...campaign, audienceSegments: [...campaign.audienceSegments] };
-    const segmentToUpdate = newCampaign.audienceSegments[segmentIndex];
-    segmentToUpdate.imagePrompt = newPrompt;
-    setCampaign(newCampaign);
-  };
-
   const handleSaveEdit = (segmentIndex: number, newCreative: Creative) => {
     const newCampaign = { ...campaign, audienceSegments: [...campaign.audienceSegments] };
     newCampaign.audienceSegments[segmentIndex].creative = newCreative;
@@ -110,18 +120,24 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     setCampaign({ ...campaign, audienceSegments: selectedSegments });
     onNext();
   };
+  
+  const handleGenerateWithInstructions = (instructions: string) => {
+    if (regenState) {
+        handleGenerateCreative(regenState.segmentIndex, instructions);
+        setRegenState(null);
+    }
+  };
 
   const isAnyGenerationInProgress = campaign.audienceSegments.some(s => s.creative?.isGenerating);
   const selectedSegments = campaign.audienceSegments.filter(s => s.isSelected);
-  const allSelectedHaveCreatives = selectedSegments.every(s => s.creative && !s.creative.isGenerating);
   const atLeastOneSelected = selectedSegments.length > 0;
-  const canProceed = !isAnyGenerationInProgress && atLeastOneSelected && allSelectedHaveCreatives;
+  const canProceed = !isAnyGenerationInProgress && atLeastOneSelected;
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Generate Ad Creatives</h2>
+      <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Ad Creatives</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 text-center">
-        For each selected segment, generate a unique ad creative. You can then edit the images if needed.
+        Select your preferred creative direction for each segment, then generate the ad image.
       </p>
 
       {error && (
@@ -153,33 +169,68 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                 />
               </div>
 
-              <div className="mt-4">
-                <label htmlFor={`image-prompt-${index}`} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Image Prompt
-                </label>
-                <div className="relative mt-1">
-                  <textarea
-                    id={`image-prompt-${index}`}
-                    rows={5}
-                    value={segment.imagePrompt}
-                    onChange={(e) => handleImagePromptChange(index, e.target.value)}
-                    className="w-full block p-2.5 pr-32 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 dark:border-slate-600 resize-y"
-                    aria-label={`Image prompt for ${segment.name}`}
-                  />
-                  <div className="absolute bottom-2.5 right-2.5">
-                    <Button 
-                        variant="secondary" 
-                        onClick={() => handleGenerateCreative(index)} 
-                        isLoading={creative?.isGenerating}
-                        className="!py-1.5 !px-3"
-                        aria-label={creative?.imageUrl ? 'Regenerate creative' : 'Generate creative'}
-                    >
-                        <SparklesIcon className="h-4 w-4 mr-1.5" />
-                        {creative?.imageUrl ? 'Regenerate' : 'Generate'}
-                    </Button>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Image Prompts */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Image Prompt Options
+                    </label>
+                    <div className="space-y-2">
+                        {segment.imagePrompts?.map((prompt, promptIndex) => (
+                            <div key={promptIndex} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedOptions[index]?.imgIndex === promptIndex ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                                <label className="flex items-start cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name={`image-prompt-${index}`}
+                                        checked={selectedOptions[index]?.imgIndex === promptIndex}
+                                        onChange={() => handleOptionChange(index, 'imgIndex', promptIndex)}
+                                        className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                                    />
+                                    <span className="ml-3 text-sm text-slate-600 dark:text-slate-300">{prompt}</span>
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Notification Texts */}
+                <div>
+                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Push Notification Options
+                    </label>
+                    <div className="space-y-2">
+                        {segment.notificationTexts?.map((text, notifIndex) => (
+                            <div key={notifIndex} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedOptions[index]?.notifIndex === notifIndex ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+                                <label className="flex items-start cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name={`notification-text-${index}`}
+                                        checked={selectedOptions[index]?.notifIndex === notifIndex}
+                                        onChange={() => handleOptionChange(index, 'notifIndex', notifIndex)}
+                                        className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                                    />
+                                    <span className="ml-3 text-sm text-slate-700 dark:text-slate-200 font-medium">"{text}"</span>
+                                </label>
+                            </div>
+                        ))}
+                    </div>
                 </div>
               </div>
+              
+               <div className="mt-4 flex justify-end">
+                    <button 
+                        onClick={() => setRegenState({ segmentIndex: index })} 
+                        className="inline-flex items-center justify-center p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed no-print shadow-sm"
+                        title={creative?.imageUrl ? 'Regenerate creative' : 'Generate creative'}
+                        disabled={creative?.isGenerating}
+                    >
+                         {creative?.isGenerating 
+                            ? <div className="animate-spin h-5 w-5 border-2 border-white/50 border-t-white rounded-full" />
+                            : <SparklesIcon className="h-5 w-5" />
+                        }
+                    </button>
+                </div>
+
 
               {creative?.isGenerating && (
                 <div className="mt-4 flex flex-col items-center justify-center p-10 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700">
@@ -237,6 +288,15 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
           onClose={() => setEditingCreative(null)}
           onSave={(newCreative) => handleSaveEdit(editingCreative.segmentIndex, newCreative)}
           setError={setError}
+        />
+      )}
+      
+      {regenState && (
+        <RegenerateModal
+            title="Generate Creative"
+            onClose={() => setRegenState(null)}
+            onGenerate={handleGenerateWithInstructions}
+            isLoading={campaign.audienceSegments[regenState.segmentIndex].creative?.isGenerating || false}
         />
       )}
 

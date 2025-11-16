@@ -4,19 +4,21 @@ import { getBudgetSplit } from '../../services/geminiService';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
 import Card from '../common/Card';
+import RegenerateModal from '../common/RegenerateModal';
+import { SparklesIcon } from '../icons/SparklesIcon';
 
 interface Props {
   campaign: Campaign;
   setCampaign: (campaign: Campaign) => void;
-  onNext: () => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
 
-const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
+const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showRegenModal, setShowRegenModal] = useState(false);
 
-  const fetchBudgetSplit = useCallback(async () => {
+  const fetchBudgetSplit = useCallback(async (instructions?: string) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -27,7 +29,8 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, erro
         campaign.campaignName,
         campaign.landingPageUrl,
         campaign.customerAction,
-        campaign.productBenefits
+        campaign.productBenefits,
+        instructions
       );
 
       const newCampaign = { ...campaign, budgetAnalysis: analysis, budgetSources: sources };
@@ -97,12 +100,25 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, erro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
+  const handleRegenerate = async (instructions: string) => {
+    setShowRegenModal(false);
+    await fetchBudgetSplit(instructions);
+  };
+  
   const budgetIsSet = campaign.audienceSegments.every(s => typeof s.budget === 'number');
 
   return (
     <Card className="max-w-4xl mx-auto">
-      <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Budget Allocation</h2>
-      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 text-center">Here's a suggested budget split for your campaign, based on market analysis.</p>
+      <div className="text-center">
+        <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Budget Allocation</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Here's a suggested budget split for your campaign, based on market analysis.</p>
+        {budgetIsSet && !isLoading && (
+            <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
+                <SparklesIcon className="w-4 h-4 mr-2" />
+                Regenerate Budget
+            </Button>
+        )}
+      </div>
 
       {isLoading ? (
         <Loader text="Strategizing budget allocation with real-time data..." />
@@ -113,7 +129,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, erro
             </svg>
             <h3 className="text-lg font-semibold text-red-600 mt-4">Budget Allocation Failed</h3>
             <p className="text-slate-500 mt-2 mb-6">{error}</p>
-            <Button onClick={fetchBudgetSplit} isLoading={isLoading}>
+            <Button onClick={() => fetchBudgetSplit()} isLoading={isLoading}>
                 Try Again
             </Button>
         </div>
@@ -191,12 +207,15 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, erro
           )}
         </div>
       )}
-
-      <div className="mt-8 flex justify-end">
-        <Button onClick={onNext} disabled={isLoading || !budgetIsSet}>
-          Finish & View Full Plan
-        </Button>
-      </div>
+      
+      {showRegenModal && (
+        <RegenerateModal 
+            title="Regenerate Budget Split"
+            onClose={() => setShowRegenModal(false)}
+            onGenerate={handleRegenerate}
+            isLoading={isLoading}
+        />
+      )}
     </Card>
   );
 };

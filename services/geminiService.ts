@@ -22,7 +22,8 @@ export const getAudienceSegments = async (
   customerJob?: string,
   brandValues?: string,
   supportingDocuments?: SupportingDocument[],
-  productImage?: SupportingDocument
+  productImage?: SupportingDocument,
+  instructions?: string,
 ): Promise<{ segments: AudienceSegment[], sources: GroundingSource[], competitorAnalysis?: CompetitorAnalysis, marketAnalysis?: string }> => {
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
@@ -55,7 +56,7 @@ export const getAudienceSegments = async (
     2. A detailed description of the segment's demographics, lifestyle, and psychographics.
     3. A "rationale" explaining your reasoning. This rationale MUST explicitly reference specific facts, features, or language from the landing page content AND insights gathered from your web search to justify why this segment is a valuable target.
     4. A list of their key motivations for banking products.
-    5. A highly detailed, creative prompt for generating a compelling ad image using a text-to-image model (the 'imagePrompt'). This prompt must be a rich, descriptive paragraph. It should specify:
+    5. A list of 3 distinct, highly detailed, creative prompts for generating a compelling ad image using a text-to-image model (as 'imagePrompts'). Each prompt must be a rich, descriptive paragraph and should offer a different creative direction. Each prompt should specify:
     - **Subject:** What is the main focus of the image? (e.g., a person, an object, a scene)
     - **Scene/Setting:** Where is the subject? (e.g., a modern cafe, a family home, an outdoor market)
     - **Action/Mood:** What is happening? What is the emotional tone? (e.g., joyful, serene, ambitious, secure)
@@ -66,7 +67,7 @@ export const getAudienceSegments = async (
     - **Cultural Relevance:** Ensure the scene, people, and objects are culturally relevant to ${country}.
     - **IMPORTANT:** The prompt must NOT depict any specific real-world products or brand logos unless a product image is provided below or they are explicitly mentioned in the brand guidelines. Instead, use generic representations (e.g., a generic credit card, not a Visa).
     ${productImage ? "A product image has been provided. The imagePrompt for each segment should describe a scene that naturally features the provided product, paying attention to its realistic integration." : "Since no specific product image is provided, the imagePrompt should not attempt to render a specific product."}
-    6. A separate, short prompt for generating a concise and compelling mobile push notification text for that segment.
+    6. A list of 3 distinct, short, and compelling mobile push notification texts for that segment (as 'notificationTexts'). These should be ready-to-use marketing messages, not prompts to generate text. Each should have a clear call to action.
   `;
 
   const creativeBriefParts: string[] = [];
@@ -92,6 +93,10 @@ export const getAudienceSegments = async (
 
   if (contextInstructions.length > 0) {
     prompt += `\n\nUse the content of ${contextInstructions.join(' and ')} as context and reference for your analysis.`;
+  }
+  
+  if (instructions) {
+    prompt += `\n\nAn additional instruction was provided by the user, please adhere to it: "${instructions}"`;
   }
 
   const parts: Part[] = [{ text: prompt }];
@@ -129,10 +134,10 @@ export const getAudienceSegments = async (
             description: "Justification for selecting this segment, citing landing page content and search results."
           },
           keyMotivations: { type: Type.ARRAY, items: { type: Type.STRING } },
-          imagePrompt: { type: Type.STRING },
-          notificationTextPrompt: { type: Type.STRING }
+          imagePrompts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of 3 detailed text-to-image prompts." },
+          notificationTexts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of 3 ready-to-use push notification texts." }
         },
-        required: ['name', 'description', 'rationale', 'keyMotivations', 'imagePrompt', 'notificationTextPrompt']
+        required: ['name', 'description', 'rationale', 'keyMotivations', 'imagePrompts', 'notificationTexts']
       }
     },
     marketAnalysis: {
@@ -215,12 +220,17 @@ export const getAudienceSegments = async (
   }
 };
 
-export const generateImagenImage = async (prompt: string): Promise<{ base64: string; mimeType: string }> => {
+export const generateImagenImage = async (prompt: string, instructions?: string): Promise<{ base64: string; mimeType: string }> => {
+  let fullPrompt = prompt;
+  if (instructions) {
+    fullPrompt += `\n\nAn additional instruction was provided by the user for this image: "${instructions}"`;
+  }
+
   try {
     const response = await runGenerateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
-        parts: [{ text: prompt }],
+        parts: [{ text: fullPrompt }],
       },
       config: {
         responseModalities: [Modality.IMAGE],
@@ -240,12 +250,18 @@ export const generateImagenImage = async (prompt: string): Promise<{ base64: str
 
 export const generateImageFromProduct = async (
   productImage: SupportingDocument, 
-  prompt: string
+  prompt: string,
+  instructions?: string,
 ): Promise<{ base64: string; mimeType: string }> => {
+  let fullPrompt = `Using the provided product image, create a new photorealistic image that places the product in the following scene: "${prompt}". Pay close attention to the scale of the product. It is crucial that the product's size is realistic and in natural proportion to other objects and elements within the scene. For example, if the product is a credit card and the scene includes a person's hand, the card should be sized correctly to fit in the hand, not appear oversized. The final generated image should be a square image with 1024x1024 resolution. Do not add any text or logos to the image that were not in the original product image.`;
+  if (instructions) {
+    fullPrompt += `\n\nAn additional instruction was provided by the user for this image: "${instructions}"`;
+  }
+  
   const imagePart = {
     inlineData: { data: productImage.data, mimeType: productImage.mimeType },
   };
-  const textPart = { text: `Using the provided product image, create a new photorealistic image that places the product in the following scene: "${prompt}". Pay close attention to the scale of the product. It is crucial that the product's size is realistic and in natural proportion to other objects and elements within the scene. For example, if the product is a credit card and the scene includes a person's hand, the card should be sized correctly to fit in the hand, not appear oversized. The final generated image should be a square image with 1024x1024 resolution. Do not add any text or logos to the image that were not in the original product image.` };
+  const textPart = { text: fullPrompt };
 
   try {
     const response = await runGenerateContent({
@@ -267,10 +283,13 @@ export const generateImageFromProduct = async (
   }
 };
 
-export const generateNotificationText = async (prompt: string, landingPageUrl: string, brandValues?: string): Promise<string> => {
+export const generateNotificationText = async (prompt: string, landingPageUrl: string, brandValues?: string, instructions?: string): Promise<string> => {
     let fullPrompt = `Generate a concise and compelling mobile push notification text based on the following creative direction: "${prompt}". The notification should entice users to visit the landing page: ${landingPageUrl}.`;
     if (brandValues) {
       fullPrompt += `\n\nAdhere to these brand values: ${brandValues}`;
+    }
+    if (instructions) {
+        fullPrompt += `\n\nAn additional instruction was provided by the user for this text: "${instructions}"`;
     }
     fullPrompt += "\n\nThe notification should be short, engaging, and have a clear call to action. Return only the text of the notification, with no extra formatting or labels.";
 
@@ -349,7 +368,8 @@ export const getBudgetSplit = async (
   campaignName: string,
   landingPageUrl: string,
   customerAction?: string,
-  productBenefits?: string
+  productBenefits?: string,
+  instructions?: string
 ): Promise<{ 
   analysis: string; 
   splits: { segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[];
@@ -385,6 +405,10 @@ export const getBudgetSplit = async (
     - The "analysis" key should contain your market analysis as a string.
     - The "budgetSplits" key should contain an array of objects, where each object represents a segment and includes its name, total allocated budget, and the media channel breakdown.
   `;
+
+  if (instructions) {
+    prompt += `\n\nAn additional instruction was provided by the user, please adhere to it: "${instructions}"`;
+  }
 
   try {
     const response = await runGenerateContent({
