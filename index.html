@@ -36,6 +36,15 @@
           page-break-before: auto;
           padding-top: 0 !important;
         }
+        .print-break-before {
+          page-break-before: always;
+        }
+        .segment-card {
+          page-break-inside: avoid;
+        }
+        .grid .segment-card ~ .segment-card {
+           page-break-before: always;
+        }
         .dark\:bg-slate-900, .dark\:bg-slate-800, .dark\:bg-slate-950, .bg-slate-100, .bg-white, .bg-slate-50, .dark\:bg-slate-800\/50 {
           background-color: transparent !important;
         }

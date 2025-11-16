@@ -233,6 +233,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
 
               {creative && !creative.isGenerating && creative.imageUrl && (
                 <div className="mt-4">
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 text-center">Image Preview</h4>
                     <div className="bg-slate-100 dark:bg-slate-800/50 rounded-lg p-2 relative group w-full max-w-md mx-auto flex items-center justify-center transition-all duration-300 aspect-square">
                       <img
                         src={creative.imageUrl}

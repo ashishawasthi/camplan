@@ -146,13 +146,13 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
           )}
 
           {campaign.marketAnalysis && (
-            <Card className="mb-8 max-w-5xl mx-auto">
+            <Card className="mb-8 max-w-5xl mx-auto print-break-before">
               <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Market & Product Analysis</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{campaign.marketAnalysis}</p>
             </Card>
           )}
 
-          <div className="text-center">
+          <div className="text-center print-break-before">
             <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Target Audience Segments</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Review, edit, and select the segments you want to target for this campaign.</p>
             <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
@@ -163,7 +163,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {campaign.audienceSegments.map((segment, index) => (
-              <Card key={index} className="flex flex-col">
+              <Card key={index} className="flex flex-col segment-card">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 pr-2">{segment.name}</h3>
                   <input
