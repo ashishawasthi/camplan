@@ -50,7 +50,7 @@ export interface Campaign {
   startDate: string;
   endDate: string;
   landingPageUrl: string;
-  totalBudget: number;
+  paidMediaBudget: number;
   audienceSegments: AudienceSegment[];
   segmentSources?: GroundingSource[];
   productImage?: SupportingDocument;

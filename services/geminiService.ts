@@ -9,7 +9,7 @@ const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY ?? 'MISS
 
 export const getAudienceSegments = async (
   campaignName: string,
-  totalBudget: number,
+  paidMediaBudget: number,
   durationDays: number,
   country: string,
   landingPageUrl: string,
@@ -27,7 +27,7 @@ export const getAudienceSegments = async (
 ): Promise<{ segments: AudienceSegment[], sources: GroundingSource[], competitorAnalysis?: CompetitorAnalysis, proposition?: string }> => {
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
-    The campaign has a total budget of $${totalBudget} and will run for ${durationDays} days.
+    The campaign has a paid media budget of $${paidMediaBudget} and will run for ${durationDays} days.
   `;
 
   if (productDetailsUrl) {
@@ -184,8 +184,9 @@ export const getAudienceSegments = async (
     const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: { parts },
-      tools: [{googleSearch: {}}],
+      // FIX: The 'tools' property should be inside the 'config' object.
       config: {
+        tools: [{googleSearch: {}}],
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
@@ -368,7 +369,7 @@ export const editImage = async (base64Image: string, mimeType: string, prompt: s
 
 export const getBudgetSplit = async (
   segments: AudienceSegment[], 
-  totalBudget: number,
+  paidMediaBudget: number,
   country: string,
   campaignName: string,
   landingPageUrl: string,
@@ -383,7 +384,7 @@ export const getBudgetSplit = async (
   const segmentDetails = segments.map(s => `Segment "${s.name}": ${s.description}`).join('\n');
   let prompt = `
     As a digital marketing strategist for a consumer bank in ${country}, your task is to propose a budget allocation for an ad campaign titled "${campaignName}".
-    The total budget is $${totalBudget}. The campaign directs users to this landing page: ${landingPageUrl}. The strategy should aim to drive relevant traffic to this page.
+    The total paid media budget is $${paidMediaBudget}. The campaign directs users to this landing page: ${landingPageUrl}. The strategy should aim to drive relevant traffic to this page.
     The target audience segments are:
     ${segmentDetails}
   `;
@@ -419,8 +420,9 @@ export const getBudgetSplit = async (
     const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: prompt,
-      tools: [{googleSearch: {}}],
+      // FIX: The 'tools' property should be inside the 'config' object.
       config: {
+        tools: [{googleSearch: {}}],
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,

@@ -63,7 +63,7 @@ const App: React.FC = () => {
         let markdownContent = `# Campaign Plan: ${campaign.campaignName}\n\n`;
         markdownContent += `## 1. Campaign Overview\n`;
         markdownContent += `- **Country:** ${campaign.country}\n`;
-        markdownContent += `- **Total Budget:** $${campaign.totalBudget.toLocaleString()}\n`;
+        markdownContent += `- **Paid Media Budget:** $${campaign.paidMediaBudget.toLocaleString()}\n`;
         markdownContent += `- **Duration:** ${campaign.startDate} to ${campaign.endDate}\n`;
         markdownContent += `- **Landing Page:** ${campaign.landingPageUrl}\n\n---\n\n`;
 

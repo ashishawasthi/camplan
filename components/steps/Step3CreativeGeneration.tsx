@@ -256,7 +256,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
 
         <div className="mt-8 flex justify-end">
           <Button onClick={handleNextWithSelection} disabled={!canProceed}>
-            Allocate Budget
+            Paid Media Allocation
           </Button>
         </div>
       </div>

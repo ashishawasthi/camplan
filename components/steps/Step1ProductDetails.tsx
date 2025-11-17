@@ -39,7 +39,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
   const [startDate, setStartDate] = useState(initialDates.start);
   const [endDate, setEndDate] = useState(initialDates.end);
   const [landingPageUrl, setLandingPageUrl] = useState('');
-  const [totalBudget, setTotalBudget] = useState('10000');
+  const [paidMediaBudget, setPaidMediaBudget] = useState('10000');
   const [productDetailsUrl, setProductDetailsUrl] = useState('');
   const [importantCustomers, setImportantCustomers] = useState('');
   const [customerSegment, setCustomerSegment] = useState('');
@@ -89,7 +89,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (campaignName && country && startDate && endDate && totalBudget && landingPageUrl) {
+    if (campaignName && country && startDate && endDate && paidMediaBudget && landingPageUrl) {
       setIsProcessing(true);
       try {
         const supportingDocuments: SupportingDocument[] = await Promise.all(
@@ -115,7 +115,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
           startDate,
           endDate,
           landingPageUrl: landingPageUrl,
-          totalBudget: parseFloat(totalBudget),
+          paidMediaBudget: parseFloat(paidMediaBudget),
           productImage,
           productDetailsUrl: productDetailsUrl || undefined,
           importantCustomers: importantCustomers || undefined,
@@ -178,7 +178,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div><strong className="font-medium text-slate-500 dark:text-slate-400">Campaign Name:</strong> <span className="text-slate-800 dark:text-slate-200">{submittedData.campaignName}</span></div>
             <div><strong className="font-medium text-slate-500 dark:text-slate-400">Country:</strong> <span className="text-slate-800 dark:text-slate-200">{submittedData.country}</span></div>
-            <div><strong className="font-medium text-slate-500 dark:text-slate-400">Total Budget:</strong> <span className="text-slate-800 dark:text-slate-200">${submittedData.totalBudget.toLocaleString()}</span></div>
+            <div><strong className="font-medium text-slate-500 dark:text-slate-400">Paid Media Budget:</strong> <span className="text-slate-800 dark:text-slate-200">${submittedData.paidMediaBudget.toLocaleString()}</span></div>
             <div><strong className="font-medium text-slate-500 dark:text-slate-400">Duration:</strong> <span className="text-slate-800 dark:text-slate-200">{submittedData.startDate} to {submittedData.endDate}</span></div>
             <div className="md:col-span-2"><strong className="font-medium text-slate-500 dark:text-slate-400">Landing Page URL:</strong> <a href={submittedData.landingPageUrl} className="text-indigo-600 dark:text-indigo-400 hover:underline break-all">{submittedData.landingPageUrl}</a></div>
             
@@ -253,14 +253,14 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
               </select>
             </div>
             <div>
-              <label htmlFor="totalBudget" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Total Budget (S$)
+              <label htmlFor="paidMediaBudget" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Paid Media Budget (S$)
               </label>
               <input
                 type="number"
-                id="totalBudget"
-                value={totalBudget}
-                onChange={(e) => setTotalBudget(e.target.value)}
+                id="paidMediaBudget"
+                value={paidMediaBudget}
+                onChange={(e) => setPaidMediaBudget(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600"
                 placeholder="e.g., 50000"
                 required

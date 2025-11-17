@@ -37,7 +37,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       const durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
       const { segments, sources, competitorAnalysis, proposition } = await getAudienceSegments(
         campaign.campaignName,
-        campaign.totalBudget,
+        campaign.paidMediaBudget,
         durationDays,
         campaign.country,
         campaign.landingPageUrl,

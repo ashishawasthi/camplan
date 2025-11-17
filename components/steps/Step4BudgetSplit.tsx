@@ -24,7 +24,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
     try {
       const { analysis, splits, sources } = await getBudgetSplit(
         campaign.audienceSegments, 
-        campaign.totalBudget,
+        campaign.paidMediaBudget,
         campaign.country,
         campaign.campaignName,
         campaign.landingPageUrl,
@@ -51,12 +51,12 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
       });
       
       // Normalize segment budgets if total allocated doesn't match total budget
-      if (totalAllocated > 0 && Math.abs(totalAllocated - campaign.totalBudget) > 1) { // Allow for rounding errors
-        const ratio = campaign.totalBudget / totalAllocated;
+      if (totalAllocated > 0 && Math.abs(totalAllocated - campaign.paidMediaBudget) > 1) { // Allow for rounding errors
+        const ratio = campaign.paidMediaBudget / totalAllocated;
         let runningTotal = 0;
         updatedSegments.forEach((segment, index) => {
           if (index === updatedSegments.length - 1) {
-             segment.budget = campaign.totalBudget - runningTotal;
+             segment.budget = campaign.paidMediaBudget - runningTotal;
           } else {
             const newBudget = Math.round((segment.budget || 0) * ratio);
             segment.budget = newBudget;
@@ -110,7 +110,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
   return (
     <Card className="max-w-6xl mx-auto">
       <div className="text-center">
-        <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Budget Allocation</h2>
+        <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Paid Media Allocation</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Here's a suggested budget split for your campaign, based on market analysis.</p>
         {budgetIsSet && !isLoading && (
             <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
@@ -146,7 +146,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
             <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Total Budget Allocation by Segment</h3>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-8 flex overflow-hidden">
               {campaign.audienceSegments.map((segment, index) => {
-                const percentage = ((segment.budget || 0) / campaign.totalBudget) * 100;
+                const percentage = ((segment.budget || 0) / campaign.paidMediaBudget) * 100;
                 const colors = ['bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-teal-500', 'bg-sky-500'];
                 return (
                   <div
@@ -167,7 +167,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {campaign.audienceSegments.map((segment, index) => {
                  const colors = ['border-indigo-500', 'border-purple-500', 'border-pink-500', 'border-teal-500', 'border-sky-500'];
-                 const percentage = ((segment.budget || 0) / campaign.totalBudget) * 100;
+                 const percentage = ((segment.budget || 0) / campaign.paidMediaBudget) * 100;
                  return (
                   <div key={index} className={`p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-l-4 ${colors[index % colors.length]}`}>
                     <div className="flex items-center justify-between mb-3">

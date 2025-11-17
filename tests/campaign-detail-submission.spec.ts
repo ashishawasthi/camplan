@@ -14,7 +14,7 @@ test.describe('Campaign Details Form', () => {
 
     // --- Step 1: Fill Campaign Details ---
     await page.getByRole('textbox', { name: 'Campaign Name' }).fill('Live Fresh Card Signup');
-    await page.getByRole('spinbutton', { name: 'Total Budget (S$)' }).fill('10000');
+    await page.getByRole('spinbutton', { name: 'Paid Media Budget (S$)' }).fill('10000');
     await page.getByRole('textbox', { name: 'Landing Page URL' }).fill('https://www.dbs.com.sg/personal/promotion/cards-dbs-livefresh-promo');
     await page.getByRole('textbox', { name: 'Product Details URL' }).fill('https://www.dbs.com.sg/personal/cards/credit-cards/live-fresh-dbs-visa-paywave-platinum-card');
     
@@ -39,11 +39,11 @@ test.describe('Campaign Details Form', () => {
     await page.screenshot({ path: 'tests/screenshots/after-creative-generation.png', fullPage: true });
 
     // Proceed to the next step. Note: This test does not generate any creatives.
-    await page.getByRole('button', { name: 'Allocate Budget' }).click();
+    await page.getByRole('button', { name: 'Paid Media Allocation' }).click();
 
     // --- Step 4: Budget Split ---
     // Assert that the budget allocation step is visible. This also involves an API call.
-    await expect(page.locator('h2:has-text("Budget Allocation")')).toBeVisible({ timeout: 180000 });
+    await expect(page.locator('h2:has-text("Paid Media Allocation")')).toBeVisible({ timeout: 180000 });
     
     await page.screenshot({ path: 'tests/screenshots/after-budget-split.png', fullPage: true });
   });
