@@ -53,10 +53,11 @@ export const getAudienceSegments = async (
     
     Finally, based on ALL your analysis (the competitor analysis if conducted, the market research, and the product/landing page analysis), define each audience segment with the following properties:
     1. A short, descriptive name.
-    2. A detailed description of the segment's demographics, lifestyle, and psychographics.
-    3. A "rationale" explaining your reasoning. This rationale MUST explicitly reference specific facts, features, or language from the landing page content AND insights gathered from your web search to justify why this segment is a valuable target.
-    4. A list of their key motivations for banking products.
-    5. A list of 3 distinct, highly detailed, creative prompts for generating a compelling ad image using a text-to-image model (as 'imagePrompts'). Each prompt must be a rich, descriptive paragraph and should offer a different creative direction. Each prompt should specify:
+    2. A "Pen Portrait": A short, narrative description of a fictional individual who represents this segment. Give them a name, age, occupation, and briefly describe a day in their life or a specific scenario where they would interact with or benefit from our product. This should bring the segment to life.
+    3. A detailed description of the segment's demographics, lifestyle, and psychographics.
+    4. A "rationale" explaining your reasoning. This rationale MUST explicitly reference specific facts, features, or language from the landing page content AND insights gathered from your web search to justify why this segment is a valuable target.
+    5. A list of their key motivations for banking products.
+    6. A list of 3 distinct, highly detailed, creative prompts for generating a compelling ad image using a text-to-image model (as 'imagePrompts'). Each prompt must be a rich, descriptive paragraph and should offer a different creative direction. Each prompt should specify:
     - **Subject:** What is the main focus of the image? (e.g., a person, an object, a scene)
     - **Scene/Setting:** Where is the subject? (e.g., a modern cafe, a family home, an outdoor market)
     - **Action/Mood:** What is happening? What is the emotional tone? (e.g., joyful, serene, ambitious, secure)
@@ -67,7 +68,7 @@ export const getAudienceSegments = async (
     - **Cultural Relevance:** Ensure the scene, people, and objects are culturally relevant to ${country}.
     - **IMPORTANT:** The prompt must NOT depict any specific real-world products or brand logos unless a product image is provided below or they are explicitly mentioned in the brand guidelines. Instead, use generic representations (e.g., a generic credit card, not a Visa).
     ${productImage ? "A product image has been provided. The imagePrompt for each segment should describe a scene that naturally features the provided product, paying attention to its realistic integration." : "Since no specific product image is provided, the imagePrompt should not attempt to render a specific product."}
-    6. A list of 3 distinct, short, and compelling mobile push notification texts for that segment (as 'notificationTexts'). These should be ready-to-use marketing messages, not prompts to generate text. Each should have a clear call to action.
+    7. A list of 3 distinct, short, and compelling mobile push notification texts for that segment (as 'notificationTexts'). These should be ready-to-use marketing messages, not prompts to generate text. Each should have a clear call to action.
   `;
 
   const creativeBriefParts: string[] = [];
@@ -128,6 +129,10 @@ export const getAudienceSegments = async (
         type: Type.OBJECT,
         properties: {
           name: { type: Type.STRING },
+          penPortrait: { 
+            type: Type.STRING,
+            description: "A short, narrative description of a fictional individual representing the segment."
+          },
           description: { type: Type.STRING },
           rationale: { 
             type: Type.STRING,
@@ -137,7 +142,7 @@ export const getAudienceSegments = async (
           imagePrompts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of 3 detailed text-to-image prompts." },
           notificationTexts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of 3 ready-to-use push notification texts." }
         },
-        required: ['name', 'description', 'rationale', 'keyMotivations', 'imagePrompts', 'notificationTexts']
+        required: ['name', 'penPortrait', 'description', 'rationale', 'keyMotivations', 'imagePrompts', 'notificationTexts']
       }
     },
     marketAnalysis: {

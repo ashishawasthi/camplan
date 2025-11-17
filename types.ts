@@ -1,6 +1,7 @@
 export interface AudienceSegment {
   name: string;
   description: string;
+  penPortrait: string;
   keyMotivations: string[];
   imagePrompts: string[];
   notificationTexts: string[];

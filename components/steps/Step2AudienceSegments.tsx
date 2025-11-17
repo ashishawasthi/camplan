@@ -19,7 +19,7 @@ interface Props {
 
 type EditingState = {
     index: number;
-    field: 'description' | 'rationale';
+    field: 'description' | 'rationale' | 'penPortrait';
     value: string;
 }
 
@@ -74,7 +74,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
     setCampaign({ ...campaign, audienceSegments: newSegments });
   };
 
-  const handleTextChange = (index: number, field: 'description' | 'rationale', newValue: string) => {
+  const handleTextChange = (index: number, field: 'description' | 'rationale' | 'penPortrait', newValue: string) => {
       const newSegments = [...campaign.audienceSegments];
       newSegments[index] = { ...newSegments[index], [field]: newValue };
       setCampaign({ ...campaign, audienceSegments: newSegments });
@@ -186,6 +186,27 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
                       </button>
                   </div>
                   
+                  {segment.penPortrait && (
+                    <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Pen Portrait
+                        </h4>
+                         <div className="relative group mt-2">
+                              <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">{segment.penPortrait}</p>
+                              <button
+                                  onClick={() => setEditingState({ index, field: 'penPortrait', value: segment.penPortrait ?? '' })}
+                                  className="absolute top-0 right-0 p-1 rounded-full text-slate-400 bg-slate-100 dark:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                                  aria-label={`Edit pen portrait for ${segment.name}`}
+                              >
+                                  <PencilIcon className="h-4 w-4" />
+                              </button>
+                          </div>
+                    </div>
+                  )}
+
                   {segment.rationale && (
                     <div className="mt-4 p-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                         <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center">
