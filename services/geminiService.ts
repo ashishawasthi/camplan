@@ -176,10 +176,7 @@ export const getAudienceSegments = async (
       .map(chunk => ({
           uri: chunk.web!.uri!,
           title: chunk.web!.title!,
-      }))
-      .filter((source, index, self) => 
-        index === self.findIndex((s) => s.uri === source.uri)
-      );
+      }));
 
     return { 
         segments: segmentsWithSelection, 
@@ -412,10 +409,7 @@ export const getBudgetSplit = async (
       .map(chunk => ({
           uri: chunk.web!.uri!,
           title: chunk.web!.title!,
-      }))
-      .filter((source, index, self) => 
-        index === self.findIndex((s) => s.uri === source.uri)
-      );
+      }));
 
     return {
       analysis: parsed.analysis,

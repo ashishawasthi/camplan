@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Campaign } from '../../types';
+import { Campaign, GroundingSource } from '../../types';
 import { getBudgetSplit } from '../../services/geminiService';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
@@ -13,6 +13,50 @@ interface Props {
   error: string | null;
   setError: (error: string | null) => void;
 }
+
+const renderTextWithCitations = (text: string | undefined, sources: GroundingSource[] | undefined) => {
+    if (!text || !sources || sources.length === 0) {
+        return text;
+    }
+
+    const parts = text.split(/(\[\d+(?:,\s*\d+)*\])/g);
+
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (/^\[\d+(?:,\s*\d+)*\]$/.test(part)) {
+                    const indices = part.replace(/[\[\]]/g, '').split(',').map(s => parseInt(s.trim(), 10));
+                    
+                    return (
+                        <React.Fragment key={i}>
+                            {indices.map((index, j) => {
+                                const sourceIndex = index - 1;
+                                if (sources[sourceIndex]) {
+                                    return (
+                                        <sup key={`${i}-${j}`} className="mx-0.5 text-xs font-bold">
+                                            <a
+                                                href={sources[sourceIndex].uri}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-block px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors"
+                                                title={sources[sourceIndex].title}
+                                            >
+                                                {index}
+                                            </a>
+                                        </sup>
+                                    );
+                                }
+                                return `[${index}]`;
+                            })}
+                        </React.Fragment>
+                    );
+                }
+                return part;
+            })}
+        </>
+    );
+};
+
 
 const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -138,7 +182,9 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
           {campaign.budgetAnalysis && (
             <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">Strategic Analysis</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{campaign.budgetAnalysis}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
+                    {renderTextWithCitations(campaign.budgetAnalysis, campaign.budgetSources)}
+                </p>
             </div>
           )}
 
@@ -193,16 +239,16 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
 
           {campaign.budgetSources && campaign.budgetSources.length > 0 && (
             <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Sources</h4>
-                <ul className="list-disc list-inside mt-2 space-y-1">
+                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">References</h4>
+                <ol className="list-decimal list-inside mt-2 space-y-1 text-sm text-slate-500 dark:text-slate-400">
                     {campaign.budgetSources.map((source, index) => (
-                        <li key={index} className="text-sm truncate">
+                        <li key={index} className="truncate">
                             <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
                                 {source.title}
                             </a>
                         </li>
                     ))}
-                </ul>
+                </ol>
             </div>
           )}
         </div>

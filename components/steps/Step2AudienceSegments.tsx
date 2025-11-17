@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Campaign } from '../../types';
+import { Campaign, GroundingSource } from '../../types';
 import { getAudienceSegments } from '../../services/geminiService';
 import Button from '../common/Button';
 import Card from '../common/Card';
@@ -22,6 +22,49 @@ type EditingState = {
     field: 'description' | 'rationale' | 'penPortrait';
     value: string;
 }
+
+const renderTextWithCitations = (text: string | undefined, sources: GroundingSource[] | undefined) => {
+    if (!text || !sources || sources.length === 0) {
+        return text;
+    }
+
+    const parts = text.split(/(\[\d+(?:,\s*\d+)*\])/g);
+
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (/^\[\d+(?:,\s*\d+)*\]$/.test(part)) {
+                    const indices = part.replace(/[\[\]]/g, '').split(',').map(s => parseInt(s.trim(), 10));
+                    
+                    return (
+                        <React.Fragment key={i}>
+                            {indices.map((index, j) => {
+                                const sourceIndex = index - 1;
+                                if (sources[sourceIndex]) {
+                                    return (
+                                        <sup key={`${i}-${j}`} className="mx-0.5 text-xs font-bold">
+                                            <a
+                                                href={sources[sourceIndex].uri}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-block px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors"
+                                                title={sources[sourceIndex].title}
+                                            >
+                                                {index}
+                                            </a>
+                                        </sup>
+                                    );
+                                }
+                                return `[${index}]`;
+                            })}
+                        </React.Fragment>
+                    );
+                }
+                return part;
+            })}
+        </>
+    );
+};
 
 const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +157,9 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
           {campaign.competitorAnalysis && (
             <Card className="mb-8 max-w-6xl mx-auto">
               <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Competitor Analysis</h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{campaign.competitorAnalysis.summary}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 whitespace-pre-wrap">
+                  {renderTextWithCitations(campaign.competitorAnalysis.summary, campaign.segmentSources)}
+              </p>
               <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
@@ -148,7 +193,23 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
           {campaign.proposition && (
             <Card className="mb-8 max-w-6xl mx-auto print-break-before">
               <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Proposition</h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{campaign.proposition}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                  {renderTextWithCitations(campaign.proposition, campaign.segmentSources)}
+              </p>
+              {campaign.segmentSources && campaign.segmentSources.length > 0 && (
+                <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">References</h4>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-slate-500 dark:text-slate-400">
+                    {campaign.segmentSources.map((source, index) => (
+                       <li key={index} className="truncate">
+                         <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                           {source.title}
+                         </a>
+                       </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
             </Card>
           )}
           <div className="max-w-6xl mx-auto">
@@ -260,22 +321,6 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
             onGenerate={handleRegenerate}
             isLoading={isLoading}
         />
-      )}
-
-      {!isLoading && hasSegments && campaign.segmentSources && campaign.segmentSources.length > 0 && (
-          <Card className="mt-8 max-w-6xl mx-auto">
-              <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Sources</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">The following web pages were used to inform the analysis and segmentation.</p>
-              <ul className="list-disc list-inside space-y-1">
-                  {campaign.segmentSources.map((source, index) => (
-                      <li key={index} className="text-sm truncate">
-                          <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
-                              {source.title}
-                          </a>
-                      </li>
-                  ))}
-              </ul>
-          </Card>
       )}
 
       {!isLoading && hasSegments && (

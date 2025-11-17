@@ -33,7 +33,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
         initialOptions[index] = { imgIndex: 0, notifIndex: 0 };
     });
     setSelectedOptions(initialOptions);
-  }, [campaign.audienceSegments]);
+  }, [campaign.audienceSegments.length]);
   
   const handleOptionChange = (segmentIndex: number, type: 'imgIndex' | 'notifIndex', value: number) => {
     setSelectedOptions(prev => ({
@@ -272,7 +272,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
       
       {regenState && (
         <RegenerateModal
-            title="Generate Creative"
+            title="Image Preview"
             onClose={() => setRegenState(null)}
             onGenerate={handleGenerateWithInstructions}
             isLoading={campaign.audienceSegments[regenState.segmentIndex].creative?.isGenerating || false}
