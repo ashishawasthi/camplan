@@ -24,7 +24,7 @@ export const getAudienceSegments = async (
   supportingDocuments?: SupportingDocument[],
   productImage?: SupportingDocument,
   instructions?: string,
-): Promise<{ segments: AudienceSegment[], sources: GroundingSource[], competitorAnalysis?: CompetitorAnalysis, marketAnalysis?: string }> => {
+): Promise<{ segments: AudienceSegment[], sources: GroundingSource[], competitorAnalysis?: CompetitorAnalysis, proposition?: string }> => {
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a total budget of $${totalBudget} and will run for ${durationDays} days.
@@ -49,7 +49,7 @@ export const getAudienceSegments = async (
     
     Then, analyze the content of the campaign's landing page, which contains the core offer and details: ${landingPageUrl}.
 
-    After that, provide a "Market & Product Analysis". This should be a concise summary of your key findings from the web search and the product/landing page content. Highlight consumer trends, key value propositions from the landing page, and any other insights that will directly inform the audience segmentation that follows.
+    After that, provide a "Proposition" section. This should be a concise summary of your key findings from the web search and the product/landing page content. It should discuss why customers should choose our product or service, focusing on the unique benefits and value it delivers. Highlight consumer trends, key value propositions from the landing page, and any other insights that will directly inform the audience segmentation that follows.
     
     Finally, based on ALL your analysis (the competitor analysis if conducted, the market research, and the product/landing page analysis), define each audience segment with the following properties:
     1. A short, descriptive name.
@@ -145,12 +145,12 @@ export const getAudienceSegments = async (
         required: ['name', 'penPortrait', 'description', 'rationale', 'keyMotivations', 'imagePrompts', 'notificationTexts']
       }
     },
-    marketAnalysis: {
+    proposition: {
         type: Type.STRING,
-        description: "A summary of findings from the market research and product/landing page analysis, highlighting consumer trends and key value propositions that inform segmentation."
+        description: "A discussion on why customers should choose the product/service, focusing on benefits and value, informed by market research and product/landing page analysis."
     }
   };
-  const requiredProperties = ['segments', 'marketAnalysis'];
+  const requiredProperties = ['segments', 'proposition'];
 
   if (productDetailsUrl) {
     schemaProperties.competitorAnalysis = {
@@ -216,7 +216,7 @@ export const getAudienceSegments = async (
         segments: segmentsWithSelection, 
         sources,
         competitorAnalysis: parsed.competitorAnalysis,
-        marketAnalysis: parsed.marketAnalysis,
+        proposition: parsed.proposition,
     };
 
   } catch (error) {

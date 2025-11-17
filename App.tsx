@@ -71,8 +71,8 @@ const App: React.FC = () => {
         if (campaign.competitorAnalysis?.summary) {
             markdownContent += `### Competitor Analysis Summary\n${campaign.competitorAnalysis.summary}\n\n`;
         }
-        if (campaign.marketAnalysis) {
-            markdownContent += `### Market & Product Analysis\n${campaign.marketAnalysis}\n\n`;
+        if (campaign.proposition) {
+            markdownContent += `### Proposition\n${campaign.proposition}\n\n`;
         }
         if (campaign.budgetAnalysis) {
             markdownContent += `### Budget Strategy Rationale\n${campaign.budgetAnalysis}\n\n`;

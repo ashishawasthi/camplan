@@ -35,7 +35,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       const start = new Date(campaign.startDate);
       const end = new Date(campaign.endDate);
       const durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
-      const { segments, sources, competitorAnalysis, marketAnalysis } = await getAudienceSegments(
+      const { segments, sources, competitorAnalysis, proposition } = await getAudienceSegments(
         campaign.campaignName,
         campaign.totalBudget,
         durationDays,
@@ -53,7 +53,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         campaign.productImage,
         instructions
       );
-      setCampaign({ ...campaign, audienceSegments: segments, segmentSources: sources, competitorAnalysis, marketAnalysis });
+      setCampaign({ ...campaign, audienceSegments: segments, segmentSources: sources, competitorAnalysis, proposition });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
@@ -145,10 +145,10 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
             </Card>
           )}
 
-          {campaign.marketAnalysis && (
+          {campaign.proposition && (
             <Card className="mb-8 max-w-6xl mx-auto print-break-before">
-              <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Market & Product Analysis</h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{campaign.marketAnalysis}</p>
+              <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Proposition</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{campaign.proposition}</p>
             </Card>
           )}
           <div className="max-w-6xl mx-auto">

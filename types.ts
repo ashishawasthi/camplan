@@ -66,5 +66,5 @@ export interface Campaign {
   budgetAnalysis?: string;
   budgetSources?: GroundingSource[];
   competitorAnalysis?: CompetitorAnalysis;
-  marketAnalysis?: string;
+  proposition?: string;
 }
