@@ -99,6 +99,38 @@ export const getAudienceSegments = async (
   if (instructions) {
     prompt += `\n\nAn additional instruction was provided by the user, please adhere to it: "${instructions}"`;
   }
+  
+  prompt += `\n\nYour final output MUST be a single, valid JSON object. Do not include any introductory text, markdown formatting like \`\`\`json, or any explanations outside of the JSON object itself. The JSON object must have the following structure:
+{`;
+  if (productDetailsUrl) {
+      prompt += `
+  "competitorAnalysis": {
+    "summary": "string",
+    "comparisonTable": [
+      {
+        "productName": "string",
+        "brand": "string",
+        "keyFeatures": ["string"],
+        "targetAudience": "string"
+      }
+    ]
+  },`;
+  }
+  prompt += `
+  "proposition": "string",
+  "segments": [
+    {
+      "name": "string",
+      "penPortrait": "string",
+      "description": "string",
+      "rationale": "string",
+      "keyMotivations": ["string"],
+      "imagePrompts": ["string", "string", "string"],
+      "notificationTexts": ["string", "string", "string"]
+    }
+  ]
+}`;
+
 
   const parts: Part[] = [{ text: prompt }];
   
@@ -122,81 +154,17 @@ export const getAudienceSegments = async (
     }
   }
 
-  const schemaProperties: any = {
-    segments: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          name: { type: Type.STRING },
-          penPortrait: { 
-            type: Type.STRING,
-            description: "A short, narrative description of a fictional individual representing the segment."
-          },
-          description: { type: Type.STRING },
-          rationale: { 
-            type: Type.STRING,
-            description: "Justification for selecting this segment, citing landing page content and search results."
-          },
-          keyMotivations: { type: Type.ARRAY, items: { type: Type.STRING } },
-          imagePrompts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of 3 detailed text-to-image prompts." },
-          notificationTexts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of 3 ready-to-use push notification texts." }
-        },
-        required: ['name', 'penPortrait', 'description', 'rationale', 'keyMotivations', 'imagePrompts', 'notificationTexts']
-      }
-    },
-    proposition: {
-        type: Type.STRING,
-        description: "A discussion on why customers should choose the product/service, focusing on benefits and value, informed by market research and product/landing page analysis."
-    }
-  };
-  const requiredProperties = ['segments', 'proposition'];
-
-  if (productDetailsUrl) {
-    schemaProperties.competitorAnalysis = {
-      type: Type.OBJECT,
-      properties: {
-        summary: {
-          type: Type.STRING,
-          description: "A brief summary of findings from the competitive analysis."
-        },
-        comparisonTable: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              productName: { type: Type.STRING },
-              brand: { type: Type.STRING },
-              keyFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
-              targetAudience: { type: Type.STRING }
-            },
-            required: ['productName', 'brand', 'keyFeatures', 'targetAudience']
-          }
-        }
-      },
-      required: ['summary', 'comparisonTable']
-    };
-    requiredProperties.push('competitorAnalysis');
-  }
-
-
   try {
     const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: { parts },
-      // FIX: The 'tools' property should be inside the 'config' object.
       config: {
         tools: [{googleSearch: {}}],
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: schemaProperties,
-          required: requiredProperties,
-        }
       }
     });
-
-    const parsed = JSON.parse(response.text);
+    
+    const jsonText = response.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+    const parsed = JSON.parse(jsonText);
     const segmentsWithSelection: AudienceSegment[] = parsed.segments.map((segment: Omit<AudienceSegment, 'isSelected'>) => ({
       ...segment,
       isSelected: true,
@@ -407,9 +375,19 @@ export const getBudgetSplit = async (
 
     Second, based on your analysis and the provided guidelines, propose a strategic budget split. Allocate the total budget across the identified segments based on their potential ROI. Then, for each segment, break down their allocated budget across these paid media channels: Facebook, Instagram, Google (Search & Display), and TikTok.
 
-    Provide the output as a single JSON object with two keys: "analysis" and "budgetSplits".
-    - The "analysis" key should contain your market analysis as a string.
-    - The "budgetSplits" key should contain an array of objects, where each object represents a segment and includes its name, total allocated budget, and the media channel breakdown.
+    Your final response must be ONLY a single, valid JSON object. Do not include any introductory text or markdown formatting. The structure should be:
+    {
+      "analysis": "string",
+      "budgetSplits": [
+        {
+          "segmentName": "string",
+          "allocatedBudget": number,
+          "mediaSplit": [
+            { "channel": "string", "budget": number }
+          ]
+        }
+      ]
+    }
   `;
 
   if (instructions) {
@@ -420,46 +398,13 @@ export const getBudgetSplit = async (
     const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: prompt,
-      // FIX: The 'tools' property should be inside the 'config' object.
       config: {
         tools: [{googleSearch: {}}],
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            analysis: {
-              type: Type.STRING,
-              description: "Market analysis and strategic rationale for the budget split."
-            },
-            budgetSplits: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  segmentName: { type: Type.STRING },
-                  allocatedBudget: { type: Type.NUMBER },
-                  mediaSplit: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        channel: { type: Type.STRING },
-                        budget: { type: Type.NUMBER }
-                      },
-                      required: ['channel', 'budget']
-                    }
-                  }
-                },
-                required: ['segmentName', 'allocatedBudget', 'mediaSplit']
-              }
-            }
-          },
-          required: ['analysis', 'budgetSplits']
-        }
       }
     });
 
-    const parsed = JSON.parse(response.text);
+    const jsonText = response.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+    const parsed = JSON.parse(jsonText);
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
     
     const sources = groundingChunks
