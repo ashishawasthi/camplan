@@ -185,6 +185,20 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
                 <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
                     {renderTextWithCitations(campaign.budgetAnalysis, campaign.budgetSources)}
                 </p>
+                {campaign.budgetSources && campaign.budgetSources.length > 0 && (
+                  <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">References</h4>
+                      <ol className="list-decimal list-inside space-y-1 text-sm text-slate-500 dark:text-slate-400">
+                          {campaign.budgetSources.map((source, index) => (
+                              <li key={index} className="truncate">
+                                  <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                      {source.title}
+                                  </a>
+                              </li>
+                          ))}
+                      </ol>
+                  </div>
+                )}
             </div>
           )}
 
@@ -236,21 +250,6 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
               })}
             </div>
           </div>
-
-          {campaign.budgetSources && campaign.budgetSources.length > 0 && (
-            <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">References</h4>
-                <ol className="list-decimal list-inside mt-2 space-y-1 text-sm text-slate-500 dark:text-slate-400">
-                    {campaign.budgetSources.map((source, index) => (
-                        <li key={index} className="truncate">
-                            <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
-                                {source.title}
-                            </a>
-                        </li>
-                    ))}
-                </ol>
-            </div>
-          )}
         </div>
       )}
       
