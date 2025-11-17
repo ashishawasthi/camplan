@@ -69,7 +69,7 @@ const App: React.FC = () => {
 
         markdownContent += `## 2. Strategic Insights\n`;
         if (campaign.competitorAnalysis?.summary) {
-            markdownContent += `### Competitor Analysis Summary\n${campaign.competitorAnalysis.summary}\n\n`;
+            markdownContent += `### Competitor Insight Summary\n${campaign.competitorAnalysis.summary}\n\n`;
         }
         if (campaign.proposition) {
             markdownContent += `### Proposition\n${campaign.proposition}\n\n`;

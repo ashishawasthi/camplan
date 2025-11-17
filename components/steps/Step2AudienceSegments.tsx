@@ -156,7 +156,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
         <>
           {campaign.competitorAnalysis && (
             <Card className="mb-8 max-w-6xl mx-auto">
-              <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Competitor Analysis</h2>
+              <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Competitor Insight</h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 whitespace-pre-wrap">
                   {renderTextWithCitations(campaign.competitorAnalysis.summary, campaign.segmentSources)}
               </p>
