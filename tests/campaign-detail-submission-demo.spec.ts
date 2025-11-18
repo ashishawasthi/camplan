@@ -23,26 +23,26 @@ test.describe('Campaign Details Form', () => {
     await page.waitForTimeout(1000);
     
     // Click submit to generate audience segments
-    await page.getByRole('button', { name: 'Generate Audience Segments' }).click();
+    await page.getByRole('button', { name: 'Generate Target Audience' }).click();
 
     // --- Step 2: Audience Segments ---
     // Assert that the next step is visible. This can take a long time.
-    await expect(page.locator('h2:has-text("Target Audience Segments")')).toBeVisible({ timeout: 180000 });
+    await expect(page.locator('h2:has-text("Target Audience")')).toBeVisible({ timeout: 180000 });
 
     // Proceed to the next step
-    await page.getByRole('button', { name: 'Ad Creatives' }).click();
+    await page.getByRole('button', { name: 'Content Strategy' }).click();
 
     // --- Step 3: Creative Generation ---
     // Assert that the creative generation step is visible
-    await expect(page.locator('h2:has-text("Ad Creatives")')).toBeVisible();
+    await expect(page.locator('h2:has-text("Content Strategy")')).toBeVisible();
     await page.waitForTimeout(5000);
 
     // Proceed to the next step. Note: This test does not generate any creatives.
-    await page.getByRole('button', { name: 'Paid Media Plan' }).click();
+    await page.getByRole('button', { name: 'Media Plan' }).click();
 
     // --- Step 4: Budget Split ---
     // Assert that the budget allocation step is visible. This also involves an API call.
-    await expect(page.locator('h2:has-text("Paid Media Plan")')).toBeVisible({ timeout: 180000 });
+    await expect(page.locator('h2:has-text("Media Plan")')).toBeVisible({ timeout: 180000 });
     await page.waitForTimeout(5000);
     
   });

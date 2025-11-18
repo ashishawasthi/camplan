@@ -128,7 +128,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
   return (
     <div>
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Ad Creatives</h2>
+        <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200 text-center">Content Strategy</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 text-center">
           Select your preferred creative direction for each segment, then generate the ad image.
         </p>

@@ -140,13 +140,13 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
   return (
     <div>
       {isLoading ? (
-        <Loader text="Analyzing market and identifying audience segments..." />
+        <Loader text="Analyzing market and identifying target audience..." />
       ) : error && !hasSegments ? (
         <Card className="text-center p-8 max-w-md mx-auto">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className="text-lg font-semibold text-red-600 mt-4">Failed to Get Segments</h3>
+            <h3 className="text-lg font-semibold text-red-600 mt-4">Failed to Get Target Audience</h3>
             <p className="text-slate-500 mt-2 mb-6">{error}</p>
             <Button onClick={() => fetchSegments()} isLoading={isLoading}>
                 Try Again
@@ -214,11 +214,11 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
           )}
           <div className="max-w-6xl mx-auto">
             <div className="text-center print-break-before">
-              <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Target Audience Segments</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Review, edit, and select the segments you want to target for this campaign.</p>
+              <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Target Audience</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Review, edit, and select the audience you want to target for this campaign.</p>
               <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
                   <SparklesIcon className="w-4 h-4 mr-2" />
-                  Regenerate Segments
+                  Regenerate Target Audience
               </Button>
             </div>
 
@@ -316,7 +316,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
 
       {showRegenModal && (
         <RegenerateModal 
-            title="Regenerate Audience Segments"
+            title="Regenerate Target Audience"
             onClose={() => setShowRegenModal(false)}
             onGenerate={handleRegenerate}
             isLoading={isLoading}
@@ -326,7 +326,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       {!isLoading && hasSegments && (
         <div className="mt-8 flex justify-end max-w-6xl mx-auto">
           <Button onClick={handleNextWithSelection} disabled={!isAnySegmentSelected}>
-            Ad Creatives
+            Content Strategy
           </Button>
         </div>
       )}

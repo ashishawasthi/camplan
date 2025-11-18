@@ -189,7 +189,7 @@ export const getAudienceSegments = async (
 
   } catch (error) {
     console.error("Error fetching audience segments:", error);
-    throw new Error("Failed to generate audience segments. The model may be unavailable or the request was invalid.");
+    throw new Error("Failed to generate target audience. The model may be unavailable or the request was invalid.");
   }
 };
 
