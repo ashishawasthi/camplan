@@ -103,6 +103,9 @@ const App: React.FC = () => {
                 segment.keyMotivations.forEach(m => {
                     markdownContent += `    - ${m}\n`;
                 });
+                if (segment.imageSearchKeywords && segment.imageSearchKeywords.length > 0) {
+                    markdownContent += `- **Image Repository Keywords:** ${segment.imageSearchKeywords.join(', ')}\n`;
+                }
                 if (segment.budget) {
                     markdownContent += `- **Allocated Budget:** $${(segment.budget || 0).toLocaleString()}\n`;
                 }

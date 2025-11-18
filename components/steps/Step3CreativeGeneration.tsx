@@ -7,6 +7,7 @@ import ImageEditorModal from '../ImageEditorModal';
 import { SparklesIcon } from '../icons/SparklesIcon';
 import { PencilIcon } from '../icons/PencilIcon';
 import RegenerateModal from '../common/RegenerateModal';
+import MarkdownRenderer from '../common/MarkdownRenderer';
 
 interface Props {
   campaign: Campaign;
@@ -162,7 +163,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Image Prompts */}
+                  {/* Image Prompts & Keywords */}
                   <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                           Image Prompt Options
@@ -178,11 +179,31 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                                           onChange={() => handleOptionChange(index, 'imgIndex', promptIndex)}
                                           className="mt-1 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                                       />
-                                      <span className="ml-3 text-sm text-slate-600 dark:text-slate-300">{prompt}</span>
+                                      <div className="ml-3 text-sm text-slate-600 dark:text-slate-300">
+                                          <MarkdownRenderer content={prompt} />
+                                      </div>
                                   </label>
                               </div>
                           ))}
                       </div>
+
+                      {segment.imageSearchKeywords && segment.imageSearchKeywords.length > 0 && (
+                        <div className="mt-6">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                Image Repository Keywords
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {segment.imageSearchKeywords.map((keyword, keywordIndex) => (
+                                    <span key={keywordIndex} className="px-2 py-1 bg-slate-200 dark:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 rounded-full">
+                                        {keyword}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                      )}
                   </div>
 
                   {/* Notification Texts */}
@@ -256,7 +277,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
 
         <div className="mt-8 flex justify-end">
           <Button onClick={handleNextWithSelection} disabled={!canProceed}>
-            Paid Media Allocation
+            Media Plan
           </Button>
         </div>
       </div>

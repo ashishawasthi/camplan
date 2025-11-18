@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Campaign, GroundingSource } from '../../types';
-import { getBudgetSplit } from '../../services/geminiService';
+import { Campaign } from '../../types';
+import { getBudgetSplit, getOwnedMediaAnalysis } from '../../services/geminiService';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
 import Card from '../common/Card';
 import RegenerateModal from '../common/RegenerateModal';
 import { SparklesIcon } from '../icons/SparklesIcon';
+import MarkdownRenderer from '../common/MarkdownRenderer';
 
 interface Props {
   campaign: Campaign;
@@ -14,56 +15,13 @@ interface Props {
   setError: (error: string | null) => void;
 }
 
-const renderTextWithCitations = (text: string | undefined, sources: GroundingSource[] | undefined) => {
-    if (!text || !sources || sources.length === 0) {
-        return text;
-    }
-
-    const parts = text.split(/(\[\d+(?:,\s*\d+)*\])/g);
-
-    return (
-        <>
-            {parts.map((part, i) => {
-                if (/^\[\d+(?:,\s*\d+)*\]$/.test(part)) {
-                    const indices = part.replace(/[\[\]]/g, '').split(',').map(s => parseInt(s.trim(), 10));
-                    
-                    return (
-                        <React.Fragment key={i}>
-                            {indices.map((index, j) => {
-                                const sourceIndex = index - 1;
-                                if (sources[sourceIndex]) {
-                                    return (
-                                        <sup key={`${i}-${j}`} className="mx-0.5 text-xs font-bold">
-                                            <a
-                                                href={sources[sourceIndex].uri}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-block px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors"
-                                                title={sources[sourceIndex].title}
-                                            >
-                                                {index}
-                                            </a>
-                                        </sup>
-                                    );
-                                }
-                                return `[${index}]`;
-                            })}
-                        </React.Fragment>
-                    );
-                }
-                return part;
-            })}
-        </>
-    );
-};
-
-
 const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setError }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPaid, setIsLoadingPaid] = useState(false);
+  const [isLoadingOwned, setIsLoadingOwned] = useState(false);
   const [showRegenModal, setShowRegenModal] = useState(false);
 
   const fetchBudgetSplit = useCallback(async (instructions?: string) => {
-    setIsLoading(true);
+    setIsLoadingPaid(true);
     setError(null);
     try {
       const { analysis, splits, sources } = await getBudgetSplit(
@@ -77,10 +35,8 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
         instructions
       );
 
-      const newCampaign = { ...campaign, budgetAnalysis: analysis, budgetSources: sources };
-      
       let totalAllocated = 0;
-      const updatedSegments = newCampaign.audienceSegments.map(segment => {
+      const updatedSegments = campaign.audienceSegments.map(segment => {
         const splitData = splits.find(s => s.segmentName === segment.name);
         if (!splitData) {
           return { ...segment, budget: 0, mediaSplit: [] };
@@ -94,8 +50,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
         };
       });
       
-      // Normalize segment budgets if total allocated doesn't match total budget
-      if (totalAllocated > 0 && Math.abs(totalAllocated - campaign.paidMediaBudget) > 1) { // Allow for rounding errors
+      if (totalAllocated > 0 && Math.abs(totalAllocated - campaign.paidMediaBudget) > 1) { 
         const ratio = campaign.paidMediaBudget / totalAllocated;
         let runningTotal = 0;
         updatedSegments.forEach((segment, index) => {
@@ -107,7 +62,6 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
             runningTotal += newBudget;
           }
 
-          // Normalize media split within the segment
           const segmentTotal = segment.budget || 0;
           if (segment.mediaSplit && segment.mediaSplit.length > 0) {
             const mediaTotal = segment.mediaSplit.reduce((acc, curr) => acc + curr.budget, 0);
@@ -128,25 +82,48 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
         });
       }
 
-      setCampaign({ ...newCampaign, audienceSegments: updatedSegments });
+      setCampaign(c => ({ ...c, audienceSegments: updatedSegments, budgetAnalysis: analysis, budgetSources: sources }));
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setError(e => (e ? `${e}\n` : '') + `Paid Media analysis failed: ${message}`);
     } finally {
-      setIsLoading(false);
+      setIsLoadingPaid(false);
     }
-  }, [campaign, setCampaign, setError]);
+  }, [campaign.audienceSegments, campaign.paidMediaBudget, campaign.country, campaign.campaignName, campaign.landingPageUrl, campaign.customerAction, campaign.productBenefits, setCampaign, setError]);
+
+  const fetchOwnedMedia = useCallback(async () => {
+    setIsLoadingOwned(true);
+    try {
+        const analysis = await getOwnedMediaAnalysis(
+            campaign.campaignName,
+            campaign.audienceSegments,
+            campaign.importantCustomers,
+            campaign.customerSegment,
+        );
+        setCampaign(c => ({ ...c, ownedMediaAnalysis: analysis}));
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(e => (e ? `${e}\n` : '') + `Owned Media analysis failed: ${message}`);
+    } finally {
+        setIsLoadingOwned(false);
+    }
+  }, [campaign.campaignName, campaign.audienceSegments, campaign.importantCustomers, campaign.customerSegment, setCampaign, setError]);
 
   useEffect(() => {
     if (!campaign.audienceSegments.some(s => s.budget)) {
       fetchBudgetSplit();
+    }
+    if (!campaign.ownedMediaAnalysis) {
+        fetchOwnedMedia();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   const handleRegenerate = async (instructions: string) => {
     setShowRegenModal(false);
-    await fetchBudgetSplit(instructions);
+    fetchBudgetSplit(instructions);
+    fetchOwnedMedia();
   };
   
   const budgetIsSet = campaign.audienceSegments.every(s => typeof s.budget === 'number');
@@ -154,26 +131,26 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
   return (
     <Card className="max-w-6xl mx-auto">
       <div className="text-center">
-        <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Paid Media Allocation</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Here's a suggested budget split for your campaign, based on market analysis.</p>
-        {budgetIsSet && !isLoading && (
+        <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Media Plan</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Here's a suggested media plan for your campaign, based on market and customer analysis.</p>
+        {budgetIsSet && !isLoadingPaid && (
             <Button variant="secondary" onClick={() => setShowRegenModal(true)} className="mb-6 no-print">
                 <SparklesIcon className="w-4 h-4 mr-2" />
-                Regenerate Budget
+                Regenerate Media Plan
             </Button>
         )}
       </div>
 
-      {isLoading ? (
+      {isLoadingPaid ? (
         <Loader text="Strategizing budget allocation with real-time data..." />
       ) : error && !budgetIsSet ? (
         <div className="text-center p-8">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className="text-lg font-semibold text-red-600 mt-4">Budget Allocation Failed</h3>
-            <p className="text-slate-500 mt-2 mb-6">{error}</p>
-            <Button onClick={() => fetchBudgetSplit()} isLoading={isLoading}>
+            <h3 className="text-lg font-semibold text-red-600 mt-4">Media Plan Failed</h3>
+            <p className="text-slate-500 mt-2 mb-6 whitespace-pre-wrap">{error}</p>
+            <Button onClick={() => fetchBudgetSplit()} isLoading={isLoadingPaid}>
                 Try Again
             </Button>
         </div>
@@ -181,10 +158,10 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
         <div className="space-y-6">
           {campaign.budgetAnalysis && (
             <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">Strategic Analysis</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
-                    {renderTextWithCitations(campaign.budgetAnalysis, campaign.budgetSources)}
-                </p>
+                <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">Paid Media: Strategic Rationale</h3>
+                <div className="text-sm text-slate-600 dark:text-slate-300">
+                    <MarkdownRenderer content={campaign.budgetAnalysis} sources={campaign.budgetSources} />
+                </div>
                 {campaign.budgetSources && campaign.budgetSources.length > 0 && (
                   <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
                       <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">References</h4>
@@ -202,8 +179,33 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
             </div>
           )}
 
-          <div>
-            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Total Budget Allocation by Segment</h3>
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+              <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Owned Media Analysis</h3>
+                {isLoadingOwned ? (
+                    <Loader text="Analyzing owned media potential..." />
+                ) : campaign.ownedMediaAnalysis ? (
+                    <div className="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <p className={`text-sm font-semibold p-3 rounded-md ${campaign.ownedMediaAnalysis.isApplicable 
+                            ? 'text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900/30' 
+                            : 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/30'}`
+                        }>
+                            <span className="font-bold">{campaign.ownedMediaAnalysis.isApplicable ? 'Recommendation: Use Owned Media.' : 'Recommendation: Do Not Use Owned Media.'}</span>
+                            <span className="block font-normal mt-1">{campaign.ownedMediaAnalysis.justification}</span>
+                        </p>
+                        {campaign.ownedMediaAnalysis.isApplicable && campaign.ownedMediaAnalysis.analysisRecommendations && (
+                            <div className="mt-4 text-sm text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-700 pt-4">
+                            <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-2">Customer Data Analysis Recommendations:</h4>
+                            <MarkdownRenderer content={campaign.ownedMediaAnalysis.analysisRecommendations} />
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <p className="text-sm text-slate-500">Owned media analysis could not be loaded.</p>
+                )}
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Paid Media: Total Budget Allocation by Segment</h3>
             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-8 flex overflow-hidden">
               {campaign.audienceSegments.map((segment, index) => {
                 const percentage = ((segment.budget || 0) / campaign.paidMediaBudget) * 100;
@@ -223,7 +225,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
           </div>
           
           <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">Paid Media Channel Breakdown</h3>
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">Paid Media: Channel Breakdown</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {campaign.audienceSegments.map((segment, index) => {
                  const colors = ['border-indigo-500', 'border-purple-500', 'border-pink-500', 'border-teal-500', 'border-sky-500'];
@@ -255,10 +257,10 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
       
       {showRegenModal && (
         <RegenerateModal 
-            title="Regenerate Budget Split"
+            title="Regenerate Media Plan"
             onClose={() => setShowRegenModal(false)}
             onGenerate={handleRegenerate}
-            isLoading={isLoading}
+            isLoading={isLoadingPaid || isLoadingOwned}
         />
       )}
     </Card>

@@ -38,11 +38,11 @@ test.describe('Campaign Details Form', () => {
     await page.waitForTimeout(5000);
 
     // Proceed to the next step. Note: This test does not generate any creatives.
-    await page.getByRole('button', { name: 'Paid Media Allocation' }).click();
+    await page.getByRole('button', { name: 'Paid Media Plan' }).click();
 
     // --- Step 4: Budget Split ---
     // Assert that the budget allocation step is visible. This also involves an API call.
-    await expect(page.locator('h2:has-text("Paid Media Allocation")')).toBeVisible({ timeout: 180000 });
+    await expect(page.locator('h2:has-text("Paid Media Plan")')).toBeVisible({ timeout: 180000 });
     await page.waitForTimeout(5000);
     
   });

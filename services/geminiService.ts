@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from '@google/genai';
-import { AudienceSegment, SupportingDocument, GroundingSource, CompetitorAnalysis } from '../types';
+import { AudienceSegment, SupportingDocument, GroundingSource, CompetitorAnalysis, OwnedMediaAnalysis } from '../types';
 import { runGenerateContent } from './geminiClient';
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -69,6 +69,7 @@ export const getAudienceSegments = async (
     - **IMPORTANT:** The prompt must NOT depict any specific real-world products or brand logos unless a product image is provided below or they are explicitly mentioned in the brand guidelines. Instead, use generic representations (e.g., a generic credit card, not a Visa).
     ${productImage ? "A product image has been provided. The imagePrompt for each segment should describe a scene that naturally features the provided product, paying attention to its realistic integration." : "Since no specific product image is provided, the imagePrompt should not attempt to render a specific product."}
     7. A list of 3 distinct, short, and compelling mobile push notification texts for that segment (as 'notificationTexts'). These should be ready-to-use marketing messages, not prompts to generate text. Each should have a clear call to action.
+    8. A list of 5-7 concise keywords for searching an existing internal ad image repository (as 'imageSearchKeywords'). These keywords should reflect the themes, subjects, and moods of the 'imagePrompts' you created. They should be practical for finding stock photography or existing campaign assets. Examples: "young professionals", "financial success", "mobile banking", "city life", "secure future".
   `;
 
   const creativeBriefParts: string[] = [];
@@ -126,7 +127,8 @@ export const getAudienceSegments = async (
       "rationale": "string",
       "keyMotivations": ["string"],
       "imagePrompts": ["string", "string", "string"],
-      "notificationTexts": ["string", "string", "string"]
+      "notificationTexts": ["string", "string", "string"],
+      "imageSearchKeywords": ["string"]
     }
   ]
 }`;
@@ -368,7 +370,7 @@ export const getBudgetSplit = async (
 
 
   prompt += `
-    First, conduct a brief analysis of the current digital marketing landscape and consumer media consumption habits in ${country}, particularly for financial products. Use real-time search to gather recent data and trends. This analysis should justify your budget allocation strategy.
+    First, conduct a brief analysis of the current digital marketing landscape and consumer media consumption habits in ${country}, particularly for financial products. Use real-time search to gather recent data and trends. This analysis should justify your budget allocation strategy. The analysis should be formatted using markdown for readability (e.g., using '##' for headings, '*' for bullet points, and '**' for bold text).
 
     Second, based on your analysis and the provided guidelines, propose a strategic budget split. Allocate the total budget across the identified segments based on their potential ROI. Then, for each segment, break down their allocated budget across these paid media channels: Facebook, Instagram, Google (Search & Display), and TikTok.
 
@@ -421,4 +423,62 @@ export const getBudgetSplit = async (
     console.error("Error fetching budget split:", error);
     throw new Error("Failed to generate a budget split. Please try again.");
   }
+};
+
+export const getOwnedMediaAnalysis = async (
+  campaignName: string,
+  segments: AudienceSegment[],
+  importantCustomers?: string,
+  customerSegment?: string,
+): Promise<OwnedMediaAnalysis> => {
+    let prompt = `
+        As a marketing strategist for a consumer bank, your task is to analyze if the following campaign is suitable for targeting the bank's existing customers using owned media channels (e.g., email, SMS, mobile app notifications, website banners).
+
+        Campaign Name: "${campaignName}"
+        Target Audience Segments:
+        ${segments.map(s => `- ${s.name}: ${s.description}`).join('\n')}
+    `;
+
+    if (importantCustomers || customerSegment) {
+        prompt += `\nThe campaign brief specifies targeting: "${importantCustomers || customerSegment}"`;
+    }
+
+    prompt += `
+
+        Based on the provided information:
+        1.  First, determine if this campaign is applicable for targeting existing customers. The answer should be a clear "Yes" or "No".
+        2.  Provide a short justification for your decision.
+        3.  If the campaign is applicable (i.e., you answered "Yes"), provide a detailed recommendation on which customer data analysis techniques should be used to identify the most relevant customer sub-segments. Your recommendations should cover:
+            -   **Product Propensities:** How to use models to predict which customers are most likely to be interested in the campaign's product/offer.
+            -   **Customer Personas:** How to map the campaign's target segments to internal customer personas.
+            -   **Demographic Analysis:** How to use demographic data (age, income, location) to refine targeting.
+            -   **Behavioral Analysis:** How to leverage transaction history, app/website usage, and past campaign interactions to find the right audience.
+
+        Your final output MUST be a single, valid JSON object with no extra text or markdown formatting. The JSON object must have this structure:
+        {
+          "isApplicable": boolean,
+          "justification": "string",
+          "analysisRecommendations": "string"
+        }
+
+        The "analysisRecommendations" field should be a well-structured string, using markdown for headings and bullet points (e.g., using '##' for headings, '*' for bullet points, and '**' for bold text), that explains the data analysis techniques. If "isApplicable" is false, this field should be an empty string.
+    `;
+
+    try {
+        const response = await runGenerateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+            },
+        });
+
+        const jsonText = response.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+        const parsed: OwnedMediaAnalysis = JSON.parse(jsonText);
+        return parsed;
+
+    } catch (error) {
+        console.error("Error fetching owned media analysis:", error);
+        throw new Error("Failed to generate owned media analysis. Please try again.");
+    }
 };

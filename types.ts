@@ -5,6 +5,7 @@ export interface AudienceSegment {
   keyMotivations: string[];
   imagePrompts: string[];
   notificationTexts: string[];
+  imageSearchKeywords: string[];
   isSelected?: boolean;
   creative?: Creative;
   budget?: number;
@@ -44,6 +45,12 @@ export interface CompetitorAnalysis {
   comparisonTable: CompetitorProduct[];
 }
 
+export interface OwnedMediaAnalysis {
+  isApplicable: boolean;
+  justification: string;
+  analysisRecommendations: string;
+}
+
 export interface Campaign {
   campaignName: string;
   country: string;
@@ -67,4 +74,5 @@ export interface Campaign {
   budgetSources?: GroundingSource[];
   competitorAnalysis?: CompetitorAnalysis;
   proposition?: string;
+  ownedMediaAnalysis?: OwnedMediaAnalysis;
 }
