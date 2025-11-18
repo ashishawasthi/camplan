@@ -11,11 +11,12 @@ import MarkdownRenderer from '../common/MarkdownRenderer';
 interface Props {
   campaign: Campaign;
   setCampaign: (campaign: Campaign) => void;
+  onNext: () => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
 
-const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setError }) => {
+const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [isLoadingPaid, setIsLoadingPaid] = useState(false);
   const [isLoadingOwned, setIsLoadingOwned] = useState(false);
   const [showRegenModal, setShowRegenModal] = useState(false);
@@ -159,7 +160,7 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
           {campaign.budgetAnalysis && (
             <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-2">Paid Media: Strategic Rationale</h3>
-                <div className="text-sm text-slate-600 dark:text-slate-300">
+                <div className="text-sm text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-white dark:bg-slate-800">
                     <MarkdownRenderer content={campaign.budgetAnalysis} sources={campaign.budgetSources} />
                 </div>
                 {campaign.budgetSources && campaign.budgetSources.length > 0 && (
@@ -195,7 +196,9 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
                         {campaign.ownedMediaAnalysis.isApplicable && campaign.ownedMediaAnalysis.analysisRecommendations && (
                             <div className="mt-4 text-sm text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-700 pt-4">
                             <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-2">Customer Data Analysis Recommendations:</h4>
-                            <MarkdownRenderer content={campaign.ownedMediaAnalysis.analysisRecommendations} />
+                            <div className="border border-slate-300 dark:border-slate-600 rounded-lg p-4 bg-white dark:bg-slate-800">
+                                <MarkdownRenderer content={campaign.ownedMediaAnalysis.analysisRecommendations} />
+                            </div>
                             </div>
                         )}
                     </div>
@@ -262,6 +265,13 @@ const Step4BudgetSplit: React.FC<Props> = ({ campaign, setCampaign, error, setEr
             onGenerate={handleRegenerate}
             isLoading={isLoadingPaid || isLoadingOwned}
         />
+      )}
+      {!isLoadingPaid && budgetIsSet && (
+        <div className="mt-8 flex justify-end">
+          <Button onClick={onNext}>
+            Content Strategy
+          </Button>
+        </div>
       )}
     </Card>
   );

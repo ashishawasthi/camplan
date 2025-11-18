@@ -489,7 +489,7 @@ const Step1ProductDetails: React.FC<Props> = ({ onNext }) => {
 
           <div className="flex justify-end">
             <Button type="submit" isLoading={isProcessing}>
-              {isProcessing ? 'Processing...' : 'Generate Target Audience'}
+              {isProcessing ? 'Processing...' : 'Target Audience'}
             </Button>
           </div>
         </form>

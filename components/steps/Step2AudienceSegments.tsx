@@ -326,7 +326,7 @@ const Step2AudienceSegments: React.FC<Props> = ({ campaign, setCampaign, onNext,
       {!isLoading && hasSegments && (
         <div className="mt-8 flex justify-end max-w-6xl mx-auto">
           <Button onClick={handleNextWithSelection} disabled={!isAnySegmentSelected}>
-            Content Strategy
+            Media Plan
           </Button>
         </div>
       )}

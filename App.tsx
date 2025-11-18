@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Campaign } from './types';
 import Step1ProductDetails from './components/steps/Step1ProductDetails';
@@ -17,7 +18,7 @@ const App: React.FC = () => {
 
   const [isDetailsSubmitted, setIsDetailsSubmitted] = useState(false);
   const [isAudienceCompleted, setIsAudienceCompleted] = useState(false);
-  const [isCreativeCompleted, setIsCreativeCompleted] = useState(false);
+  const [isMediaPlanCompleted, setIsMediaPlanCompleted] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
   const updateCampaign = useCallback((updatedCampaign: Campaign) => {
@@ -30,7 +31,7 @@ const App: React.FC = () => {
     setIsDetailsSubmitted(true);
     // Reset subsequent steps if details are re-submitted
     setIsAudienceCompleted(false);
-    setIsCreativeCompleted(false);
+    setIsMediaPlanCompleted(false);
     // Scroll to the next section
     setTimeout(() => {
         document.getElementById('step-2-container')?.scrollIntoView({ behavior: 'smooth' });
@@ -40,14 +41,16 @@ const App: React.FC = () => {
   const handleAudienceComplete = () => {
     setError(null);
     setIsAudienceCompleted(true);
+    // Reset subsequent steps if this is re-run
+    setIsMediaPlanCompleted(false);
     setTimeout(() => {
         document.getElementById('step-3-container')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   };
 
-  const handleCreativeComplete = () => {
+  const handleMediaPlanComplete = () => {
     setError(null);
-    setIsCreativeCompleted(true);
+    setIsMediaPlanCompleted(true);
     setTimeout(() => {
         document.getElementById('step-4-container')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -61,59 +64,119 @@ const App: React.FC = () => {
 
         // 1. Create Markdown content
         let markdownContent = `# Campaign Plan: ${campaign.campaignName}\n\n`;
-        markdownContent += `## 1. Campaign Overview\n`;
+        markdownContent += `## 1. Campaign Overview\n\n`;
+        markdownContent += `- **Campaign Name:** ${campaign.campaignName}\n`;
         markdownContent += `- **Country:** ${campaign.country}\n`;
         markdownContent += `- **Paid Media Budget:** $${campaign.paidMediaBudget.toLocaleString()}\n`;
         markdownContent += `- **Duration:** ${campaign.startDate} to ${campaign.endDate}\n`;
-        markdownContent += `- **Landing Page:** ${campaign.landingPageUrl}\n\n---\n\n`;
+        markdownContent += `- **Landing Page:** [${campaign.landingPageUrl}](${campaign.landingPageUrl})\n`;
 
-        markdownContent += `## 2. Strategic Insights\n`;
-        if (campaign.competitorAnalysis?.summary) {
-            markdownContent += `### Competitor Insight Summary\n${campaign.competitorAnalysis.summary}\n\n`;
+        if (campaign.productDetailsUrl) {
+            markdownContent += `- **Product Details Page:** [${campaign.productDetailsUrl}](${campaign.productDetailsUrl})\n`;
         }
+        markdownContent += `\n`;
+
+        const hasCreativeBrief = campaign.importantCustomers || campaign.customerSegment || campaign.whatToTell || campaign.customerAction || campaign.productBenefits || campaign.customerJob || campaign.brandValues;
+        if(hasCreativeBrief) {
+            markdownContent += `### Creative Brief\n`;
+            if (campaign.importantCustomers) markdownContent += `- **Target Customers:** ${campaign.importantCustomers}\n`;
+            if (campaign.customerSegment) markdownContent += `- **Customer Segment:** ${campaign.customerSegment}\n`;
+            if (campaign.whatToTell) markdownContent += `- **Key Message:** ${campaign.whatToTell}\n`;
+            if (campaign.customerAction) markdownContent += `- **Desired Action/Feeling:** ${campaign.customerAction}\n`;
+            if (campaign.productBenefits) markdownContent += `- **Product Benefits/Promotions:** ${campaign.productBenefits}\n`;
+            if (campaign.customerJob) markdownContent += `- **Customer Job-to-be-done:** ${campaign.customerJob}\n`;
+            if (campaign.brandValues) markdownContent += `- **Brand Values:** ${campaign.brandValues}\n`;
+            markdownContent += `\n`;
+        }
+
+        markdownContent += `---\n\n`;
+
+        markdownContent += `## 2. Strategic Insights\n\n`;
+        
+        if (campaign.competitorAnalysis) {
+            markdownContent += `### Competitor Analysis\n\n`;
+            if (campaign.competitorAnalysis.summary) {
+                markdownContent += `**Summary:**\n${campaign.competitorAnalysis.summary}\n\n`;
+            }
+            if (campaign.competitorAnalysis.comparisonTable && campaign.competitorAnalysis.comparisonTable.length > 0) {
+                markdownContent += `**Comparison Table:**\n\n`;
+                markdownContent += `| Product | Brand | Key Features | Target Audience |\n`;
+                markdownContent += `|---|---|---|---|\n`;
+                campaign.competitorAnalysis.comparisonTable.forEach(p => {
+                    const features = p.keyFeatures.map(f => `- ${f}`).join('<br>');
+                    const audience = p.targetAudience.replace(/\n/g, '<br>');
+                    markdownContent += `| ${p.productName} | ${p.brand} | ${features} | ${audience} |\n`;
+                });
+                markdownContent += `\n`;
+            }
+        }
+        
         if (campaign.proposition) {
             markdownContent += `### Proposition\n${campaign.proposition}\n\n`;
         }
-        if (campaign.budgetAnalysis) {
-            markdownContent += `### Budget Strategy Rationale\n${campaign.budgetAnalysis}\n\n`;
+        
+        if (campaign.ownedMediaAnalysis) {
+            markdownContent += `### Owned Media Analysis\n\n`;
+            const recommendation = campaign.ownedMediaAnalysis.isApplicable ? 'Use Owned Media.' : 'Do Not Use Owned Media.';
+            markdownContent += `**Recommendation:** ${recommendation}\n\n`;
+            markdownContent += `**Justification:**\n${campaign.ownedMediaAnalysis.justification}\n\n`;
+            if (campaign.ownedMediaAnalysis.isApplicable && campaign.ownedMediaAnalysis.analysisRecommendations) {
+                markdownContent += `**Customer Data Analysis Recommendations:**\n\n${campaign.ownedMediaAnalysis.analysisRecommendations}\n\n`;
+            }
         }
-        if (campaign.budgetSources && campaign.budgetSources.length > 0) {
-            markdownContent += `**Sources:**\n`;
-            campaign.budgetSources.forEach(source => {
+        
+        if (campaign.budgetAnalysis) {
+            markdownContent += `### Paid Media Strategy Rationale\n${campaign.budgetAnalysis}\n\n`;
+        }
+        
+        const allSources = [...(campaign.segmentSources || []), ...(campaign.budgetSources || [])];
+        const uniqueSources = allSources.filter((source, index, self) => 
+            index === self.findIndex((s) => s.uri === source.uri)
+        );
+
+        if (uniqueSources.length > 0) {
+            markdownContent += `### Sources & References\n`;
+            uniqueSources.forEach(source => {
                 markdownContent += `- [${source.title}](${source.uri})\n`;
             });
             markdownContent += `\n`;
         }
+
         markdownContent += `\n---\n\n`;
         
-        if (campaign.audienceSegments.length > 0) {
+        const segmentsToExport = campaign.audienceSegments.filter(s => s.isSelected);
+
+        if (segmentsToExport.length > 0) {
             markdownContent += `## 3. Audience Segments & Creatives\n\n`;
 
-            // 2. Loop through segments
-            for (const segment of campaign.audienceSegments) {
+            for (const segment of segmentsToExport) {
                 const segmentFolderName = segment.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
                 const segmentFolder = zip.folder(segmentFolderName);
 
-                markdownContent += `### Segment: ${segment.name}\n`;
-                markdownContent += `- **Description:** ${segment.description}\n`;
+                markdownContent += `### Segment: ${segment.name}\n\n`;
+                markdownContent += `**Description:** ${segment.description}\n\n`;
+                if (segment.penPortrait) {
+                    markdownContent += `**Pen Portrait:**\n${segment.penPortrait}\n\n`;
+                }
                 if (segment.rationale) {
-                    markdownContent += `- **Rationale:** ${segment.rationale}\n`;
+                    markdownContent += `**Rationale:** ${segment.rationale}\n\n`;
                 }
-                markdownContent += `- **Key Motivations:**\n`;
+                markdownContent += `**Key Motivations:**\n`;
                 segment.keyMotivations.forEach(m => {
-                    markdownContent += `    - ${m}\n`;
+                    markdownContent += `  - ${m}\n`;
                 });
+                markdownContent += `\n`;
+
                 if (segment.imageSearchKeywords && segment.imageSearchKeywords.length > 0) {
-                    markdownContent += `- **Image Repository Keywords:** ${segment.imageSearchKeywords.join(', ')}\n`;
+                    markdownContent += `**Image Repository Keywords:** ${segment.imageSearchKeywords.join(', ')}\n\n`;
                 }
+
                 if (segment.budget) {
-                    markdownContent += `- **Allocated Budget:** $${(segment.budget || 0).toLocaleString()}\n`;
+                    markdownContent += `**Allocated Budget:** $${(segment.budget || 0).toLocaleString()}\n\n`;
                 }
-                if (segment.creative?.notificationText) {
-                    markdownContent += `- **Push Notification Text:** "${segment.creative.notificationText}"\n`;
-                }
+
                 if (segment.mediaSplit && segment.mediaSplit.length > 0) {
-                     markdownContent += `- **Media Split:**\n\n`;
+                     markdownContent += `**Media Split:**\n\n`;
                      markdownContent += `| Channel   | Budget      |\n`;
                      markdownContent += `|-----------|-------------|\n`;
                      segment.mediaSplit.forEach(media => {
@@ -121,14 +184,33 @@ const App: React.FC = () => {
                      });
                      markdownContent += `\n`;
                 }
-                markdownContent += `\n---\n\n`;
-
-                if (segment.creative?.imageUrl) {
-                    const imageData = segment.creative.imageUrl.split('base64,')[1];
-                    if (imageData) {
-                        segmentFolder.file('creative.jpeg', imageData, { base64: true });
+                
+                if (segment.creative) {
+                    markdownContent += `#### Generated Creative\n`;
+                    markdownContent += `**Push Notification:** "${segment.creative.notificationText}"\n\n`;
+                    markdownContent += `**Image Prompt:**\n${segment.creative.imagePrompt}\n\n`;
+                    markdownContent += `*Image is saved as \`creative.jpeg\` in this segment's folder.*\n\n`;
+                    
+                    if (segment.creative.imageUrl) {
+                        const imageData = segment.creative.imageUrl.split('base64,')[1];
+                        if (imageData) {
+                            segmentFolder.file('creative.jpeg', imageData, { base64: true });
+                        }
                     }
                 }
+                
+                markdownContent += `#### Creative Options Provided\n`;
+                markdownContent += `**Image Prompts:**\n`;
+                segment.imagePrompts.forEach(p => {
+                    markdownContent += `  - ${p.replace(/\n/g, ' ')}\n`;
+                });
+                markdownContent += `\n**Notification Texts:**\n`;
+                segment.notificationTexts.forEach(t => {
+                    markdownContent += `  - "${t}"\n`;
+                });
+                markdownContent += `\n`;
+
+                markdownContent += `\n---\n\n`;
             }
         }
         
@@ -211,13 +293,13 @@ const App: React.FC = () => {
 
         {isAudienceCompleted && campaign && (
              <div id="step-3-container" className="printable-section mt-12 pt-8 border-t-2 border-dashed border-slate-300 dark:border-slate-700">
-                <Step3CreativeGeneration campaign={campaign} setCampaign={updateCampaign} onNext={handleCreativeComplete} error={error} setError={setError} />
+                <Step4BudgetSplit campaign={campaign} setCampaign={updateCampaign} onNext={handleMediaPlanComplete} error={error} setError={setError} />
             </div>
         )}
 
-        {isCreativeCompleted && campaign && (
+        {isMediaPlanCompleted && campaign && (
             <div id="step-4-container" className="printable-section mt-12 pt-8 border-t-2 border-dashed border-slate-300 dark:border-slate-700">
-                <Step4BudgetSplit campaign={campaign} setCampaign={updateCampaign} error={error} setError={setError} />
+                <Step3CreativeGeneration campaign={campaign} setCampaign={updateCampaign} error={error} setError={setError} />
             </div>
         )}
         

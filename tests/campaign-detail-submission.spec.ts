@@ -21,7 +21,7 @@ test.describe('Campaign Details Form', () => {
     await page.screenshot({ path: 'tests/screenshots/before-submit.png', fullPage: true });
     
     // Click submit to generate audience segments
-    await page.getByRole('button', { name: 'Generate Target Audience' }).click();
+    await page.getByRole('button', { name: 'Target Audience' }).click();
 
     // --- Step 2: Audience Segments ---
     // Assert that the next step is visible. This can take a long time.
@@ -30,21 +30,21 @@ test.describe('Campaign Details Form', () => {
     await page.screenshot({ path: 'tests/screenshots/after-audience-segments.png', fullPage: true });
 
     // Proceed to the next step
-    await page.getByRole('button', { name: 'Content Strategy' }).click();
-
-    // --- Step 3: Creative Generation ---
-    // Assert that the creative generation step is visible
-    await expect(page.locator('h2:has-text("Content Strategy")')).toBeVisible();
-
-    await page.screenshot({ path: 'tests/screenshots/after-creative-generation.png', fullPage: true });
-
-    // Proceed to the next step. Note: This test does not generate any creatives.
     await page.getByRole('button', { name: 'Media Plan' }).click();
 
-    // --- Step 4: Budget Split ---
+    // --- Step 3: Media Plan ---
     // Assert that the budget allocation step is visible. This also involves an API call.
     await expect(page.locator('h2:has-text("Media Plan")')).toBeVisible({ timeout: 180000 });
     
-    await page.screenshot({ path: 'tests/screenshots/after-budget-split.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/after-media-plan.png', fullPage: true });
+    
+    // Proceed to the next step.
+    await page.getByRole('button', { name: 'Content Strategy' }).click();
+
+    // --- Step 4: Content Strategy ---
+    // Assert that the creative generation step is visible
+    await expect(page.locator('h2:has-text("Content Strategy")')).toBeVisible();
+
+    await page.screenshot({ path: 'tests/screenshots/after-content-strategy.png', fullPage: true });
   });
 });

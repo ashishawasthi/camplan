@@ -12,7 +12,6 @@ import MarkdownRenderer from '../common/MarkdownRenderer';
 interface Props {
   campaign: Campaign;
   setCampaign: (campaign: Campaign) => void;
-  onNext: () => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
@@ -23,7 +22,7 @@ const timeout = (ms: number, message: string) => new Promise((_, reject) => {
   }, ms);
 });
 
-const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
+const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, error, setError }) => {
   const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; creative: Creative } | null>(null);
   const [regenState, setRegenState] = useState<{ segmentIndex: number } | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<{ [key: number]: { imgIndex: number, notifIndex: number }}>({});
@@ -107,23 +106,12 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
     setCampaign({ ...campaign, audienceSegments: newSegments });
   };
   
-  const handleNextWithSelection = () => {
-    const selectedSegments = campaign.audienceSegments.filter(s => s.isSelected);
-    setCampaign({ ...campaign, audienceSegments: selectedSegments });
-    onNext();
-  };
-  
   const handleGenerateWithInstructions = (instructions: string) => {
     if (regenState) {
         handleGenerateCreative(regenState.segmentIndex, instructions);
         setRegenState(null);
     }
   };
-
-  const isAnyGenerationInProgress = campaign.audienceSegments.some(s => s.creative?.isGenerating);
-  const selectedSegments = campaign.audienceSegments.filter(s => s.isSelected);
-  const atLeastOneSelected = selectedSegments.length > 0;
-  const canProceed = !isAnyGenerationInProgress && atLeastOneSelected;
 
   return (
     <div>
@@ -155,7 +143,7 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
                   </div>
                   <input
                     type="checkbox"
-                    checked={segment.isSelected ?? false}
+                    checked={segment.isSelected ?? true}
                     onChange={() => handleToggleSegment(index)}
                     className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer no-print"
                     aria-label={`Select segment ${segment.name}`}
@@ -273,12 +261,6 @@ const Step3CreativeGeneration: React.FC<Props> = ({ campaign, setCampaign, onNex
               </Card>
             )
           })}
-        </div>
-
-        <div className="mt-8 flex justify-end">
-          <Button onClick={handleNextWithSelection} disabled={!canProceed}>
-            Media Plan
-          </Button>
         </div>
       </div>
       
