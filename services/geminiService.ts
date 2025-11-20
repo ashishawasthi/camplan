@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Modality } from '@google/genai';
 import { AudienceSegment, SupportingDocument, GroundingSource, CompetitorAnalysis, OwnedMediaAnalysis } from '../types';
 import { runGenerateContent } from './geminiClient';
@@ -453,15 +454,17 @@ export const getOwnedMediaAnalysis = async (
             -   **Customer Personas:** How to map the campaign's target segments to internal customer personas.
             -   **Demographic Analysis:** How to use demographic data (age, income, location) to refine targeting.
             -   **Behavioral Analysis:** How to leverage transaction history, app/website usage, and past campaign interactions to find the right audience.
+        4. Identify specifically which owned media channels are recommended (e.g. "Email", "Push Notification", "SMS", "In-App", "Website Banner").
 
-        Your final output MUST be a single, valid JSON object with no extra text or markdown formatting. The JSON object must have this structure:
+        Your final output MUST be a single, valid JSON object with no extra text or markdown formatting. Do not wrap the JSON in markdown code blocks (e.g. \`\`\`json). The JSON object must have this structure:
         {
           "isApplicable": boolean,
           "justification": "string",
-          "analysisRecommendations": "string"
+          "analysisRecommendations": "string",
+          "recommendedChannels": ["string"]
         }
 
-        The "analysisRecommendations" field should be a well-structured string, using markdown for headings and bullet points (e.g., using '##' for headings, '*' for bullet points, and '**' for bold text), that explains the data analysis techniques. If "isApplicable" is false, this field should be an empty string.
+        The "analysisRecommendations" field should be a string. You can use markdown formatting within this string (like bullet points), but ensure all newlines are escaped as \\n and double quotes are escaped as \\".
     `;
 
     try {

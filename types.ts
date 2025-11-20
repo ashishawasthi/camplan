@@ -1,3 +1,4 @@
+
 export interface AudienceSegment {
   name: string;
   description: string;
@@ -49,6 +50,7 @@ export interface OwnedMediaAnalysis {
   isApplicable: boolean;
   justification: string;
   analysisRecommendations: string;
+  recommendedChannels?: string[];
 }
 
 export interface Campaign {
