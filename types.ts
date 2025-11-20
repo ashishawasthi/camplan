@@ -36,6 +36,8 @@ export interface AudienceSegment {
   
   // New field for grouped creatives
   creativeGroups?: CreativeGroup[];
+  // Legacy/Simplified creative field
+  creative?: Creative;
 }
 
 export interface SupportingDocument {

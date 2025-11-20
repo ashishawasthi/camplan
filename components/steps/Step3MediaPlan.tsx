@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Campaign } from '../../types';
 import { getBudgetSplit, getOwnedMediaAnalysis } from '../../services/geminiService';
 import Button from '../common/Button';
@@ -25,23 +25,33 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
   const [showRegenModal, setShowRegenModal] = useState(false);
   const [ownedMediaError, setOwnedMediaError] = useState<string | null>(null);
 
+  // Refs for accessing latest props in async callbacks
+  const campaignRef = useRef(campaign);
+  const errorRef = useRef(error);
+
+  useEffect(() => {
+    campaignRef.current = campaign;
+    errorRef.current = error;
+  }, [campaign, error]);
+
   const fetchBudgetSplit = useCallback(async (instructions?: string) => {
     setIsLoadingPaid(true);
     setError(null);
     try {
+      const currentCampaign = campaignRef.current;
       const { analysis, splits, sources } = await getBudgetSplit(
-        campaign.audienceSegments, 
-        campaign.paidMediaBudget,
-        campaign.country,
-        campaign.campaignName,
-        campaign.landingPageUrl,
-        campaign.customerAction,
-        campaign.productBenefits,
+        currentCampaign.audienceSegments, 
+        currentCampaign.paidMediaBudget,
+        currentCampaign.country,
+        currentCampaign.campaignName,
+        currentCampaign.landingPageUrl,
+        currentCampaign.customerAction,
+        currentCampaign.productBenefits,
         instructions
       );
 
       let totalAllocated = 0;
-      const updatedSegments = campaign.audienceSegments.map(segment => {
+      const updatedSegments = currentCampaign.audienceSegments.map(segment => {
         const splitData = splits.find(s => s.segmentName === segment.name);
         if (!splitData) return { ...segment, budget: 0, mediaSplit: [] };
         totalAllocated += splitData.allocatedBudget;
@@ -49,47 +59,63 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
       });
       
       // Normalization logic (ensure total equals budget)
-      if (totalAllocated > 0 && Math.abs(totalAllocated - campaign.paidMediaBudget) > 1) { 
-        const ratio = campaign.paidMediaBudget / totalAllocated;
+      if (totalAllocated > 0 && Math.abs(totalAllocated - currentCampaign.paidMediaBudget) > 1) { 
+        const ratio = currentCampaign.paidMediaBudget / totalAllocated;
         let runningTotal = 0;
         updatedSegments.forEach((segment, index) => {
           if (index === updatedSegments.length - 1) {
-             segment.budget = campaign.paidMediaBudget - runningTotal;
+             segment.budget = currentCampaign.paidMediaBudget - runningTotal;
           } else {
             const newBudget = Math.round((segment.budget || 0) * ratio);
             segment.budget = newBudget;
             runningTotal += newBudget;
           }
+          
+          // Also scale the inner media splits to match new segment budget
+          if (segment.mediaSplit) {
+             const currentSplitTotal = segment.mediaSplit.reduce((sum, s) => sum + s.budget, 0);
+             if (currentSplitTotal > 0) {
+                 const splitRatio = segment.budget! / currentSplitTotal;
+                 segment.mediaSplit.forEach(m => m.budget = Math.round(m.budget * splitRatio));
+                 // Fix simple rounding on the first element
+                 const newSplitTotal = segment.mediaSplit.reduce((sum, s) => sum + s.budget, 0);
+                 if (segment.mediaSplit.length > 0) {
+                     segment.mediaSplit[0].budget += (segment.budget! - newSplitTotal);
+                 }
+             }
+          }
         });
       }
 
-      setCampaign({ ...campaign, audienceSegments: updatedSegments, budgetAnalysis: analysis, budgetSources: sources });
+      setCampaign({ ...currentCampaign, audienceSegments: updatedSegments, budgetAnalysis: analysis, budgetSources: sources });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      setError(e => (e ? `${e}\n` : '') + `Paid Media analysis failed: ${message}`);
+      const currentError = errorRef.current;
+      setError((currentError ? `${currentError}\n` : '') + `Paid Media analysis failed: ${message}`);
     } finally {
       setIsLoadingPaid(false);
     }
-  }, [campaign, setCampaign, setError]);
+  }, [setCampaign, setError]);
 
   const fetchOwnedMedia = useCallback(async () => {
     setIsLoadingOwned(true);
     setOwnedMediaError(null);
     try {
+        const currentCampaign = campaignRef.current;
         const analysis = await getOwnedMediaAnalysis(
-            campaign.campaignName,
-            campaign.audienceSegments,
-            campaign.importantCustomers,
-            campaign.customerSegment,
+            currentCampaign.campaignName,
+            currentCampaign.audienceSegments,
+            currentCampaign.importantCustomers,
+            currentCampaign.customerSegment,
         );
-        setCampaign(c => ({ ...c, ownedMediaAnalysis: analysis}));
+        setCampaign({ ...campaignRef.current, ownedMediaAnalysis: analysis});
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
         setOwnedMediaError(`Owned Media analysis failed: ${message}`);
     } finally {
         setIsLoadingOwned(false);
     }
-  }, [campaign.campaignName, campaign.audienceSegments, campaign.importantCustomers, campaign.customerSegment, setCampaign]);
+  }, [setCampaign]);
 
   useEffect(() => {
     if (!campaign.audienceSegments.some(s => s.budget)) fetchBudgetSplit();
@@ -102,65 +128,73 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
     fetchOwnedMedia();
   };
 
-  const handleUpdateSplit = (segmentIndex: number, channelName: string, newPercentage: number, isChecked: boolean) => {
+  const handleUpdateSplit = (segmentIndex: number, channelName: string, newPercentage: number) => {
       const newSegments = [...campaign.audienceSegments];
-      const oldSegment = newSegments[segmentIndex];
-      const newSegment = { ...oldSegment, mediaSplit: oldSegment.mediaSplit ? oldSegment.mediaSplit.map(m => ({ ...m })) : [] };
-      newSegments[segmentIndex] = newSegment;
+      const segment = newSegments[segmentIndex];
+      const segmentBudget = segment.budget || 0;
       
-      const segmentBudget = newSegment.budget || 0;
-      const currentSplit = newSegment.mediaSplit!;
-      const existingChannelIndex = currentSplit.findIndex(m => m.channel === channelName);
-
-      if (!isChecked) {
-          if (existingChannelIndex !== -1) {
-              const removedBudget = currentSplit[existingChannelIndex].budget;
-              currentSplit.splice(existingChannelIndex, 1);
-              // Redistribute
-              if (currentSplit.length > 0 && removedBudget > 0) {
-                  const remainingTotal = currentSplit.reduce((sum, item) => sum + item.budget, 0);
-                  currentSplit.forEach(item => {
-                      const ratio = remainingTotal > 0 ? item.budget / remainingTotal : 1 / currentSplit.length;
-                      item.budget += Math.round(removedBudget * ratio);
-                  });
-                  // Fix rounding
-                  const newTotal = currentSplit.reduce((sum, item) => sum + item.budget, 0);
-                  if (segmentBudget - newTotal !== 0) currentSplit[0].budget += (segmentBudget - newTotal);
-              }
-          }
-      } else {
-          const effectivePercent = (existingChannelIndex === -1 && newPercentage === 0) ? 10 : newPercentage;
-          const targetBudget = Math.round(segmentBudget * (effectivePercent / 100));
-          
-          if (existingChannelIndex === -1) {
-              currentSplit.push({ channel: channelName, budget: targetBudget });
-          } else {
-              currentSplit[existingChannelIndex].budget = targetBudget;
-          }
-          
-          // Normalize others
-          const targetIdx = currentSplit.findIndex(m => m.channel === channelName);
-          const others = currentSplit.filter((_, i) => i !== targetIdx);
-          const desiredOthersTotal = segmentBudget - targetBudget;
-          
-          if (desiredOthersTotal <= 0) {
-              currentSplit[targetIdx].budget = segmentBudget;
-              others.forEach(m => m.budget = 0);
-          } else {
-              const othersCurrentTotal = others.reduce((sum, m) => sum + m.budget, 0);
-              others.forEach(m => {
-                  const ratio = othersCurrentTotal > 0 ? m.budget / othersCurrentTotal : 1 / others.length;
-                  m.budget = Math.round(desiredOthersTotal * ratio);
-              });
-          }
-           // Fix rounding
-           const newTotal = currentSplit.reduce((sum, item) => sum + item.budget, 0);
-           if (segmentBudget - newTotal !== 0) {
-               if (others.length > 0) currentSplit.find(m => m.channel !== channelName)!.budget += (segmentBudget - newTotal);
-               else currentSplit[targetIdx].budget += (segmentBudget - newTotal);
-           }
+      // Deep copy mediaSplit or create new
+      let currentSplit = segment.mediaSplit ? segment.mediaSplit.map(m => ({ ...m })) : [];
+      
+      // Find or create the channel entry
+      let splitItemIndex = currentSplit.findIndex(m => m.channel === channelName);
+      if (splitItemIndex === -1) {
+          currentSplit.push({ channel: channelName, budget: 0 });
+          splitItemIndex = currentSplit.length - 1;
       }
+
+      // Calculate available budget from OTHER channels
+      const otherChannelsBudget = currentSplit.reduce((sum, m, idx) => idx !== splitItemIndex ? sum + m.budget : sum, 0);
+      const maxAvailable = segmentBudget - otherChannelsBudget;
+      
+      // Calculate requested budget
+      let targetBudget = Math.round(segmentBudget * (newPercentage / 100));
+      
+      // Clamp to max available (Prevent affecting other channels)
+      if (targetBudget > maxAvailable) {
+          targetBudget = maxAvailable;
+      }
+
+      currentSplit[splitItemIndex].budget = targetBudget;
+
+      newSegments[segmentIndex] = { ...segment, mediaSplit: currentSplit };
       setCampaign({ ...campaign, audienceSegments: newSegments });
+  };
+
+  const distributeRemaining = (segmentIndex: number) => {
+      const newSegments = [...campaign.audienceSegments];
+      const segment = newSegments[segmentIndex];
+      const segmentBudget = segment.budget || 0;
+      const currentSplit = segment.mediaSplit ? segment.mediaSplit.map(m => ({ ...m })) : [];
+      
+      const currentAllocated = currentSplit.reduce((sum, m) => sum + m.budget, 0);
+      const remaining = segmentBudget - currentAllocated;
+      
+      if (remaining > 0) {
+          // Distribute remaining proportionally among active channels (budget > 0)
+          // If no active channels, distribute among all existing in split, or if empty, do nothing.
+          const activeItems = currentSplit.filter(m => m.budget > 0);
+          const itemsToDistribute = activeItems.length > 0 ? activeItems : currentSplit;
+
+          if (itemsToDistribute.length > 0) {
+             const distributeBase = itemsToDistribute.reduce((sum, item) => sum + item.budget, 0);
+             
+             itemsToDistribute.forEach(item => {
+                  const ratio = distributeBase > 0 ? item.budget / distributeBase : 1 / itemsToDistribute.length;
+                  item.budget += Math.round(remaining * ratio);
+             });
+
+             // Fix rounding on the first item to ensure total matches exact budget
+             const newTotal = currentSplit.reduce((sum, item) => sum + item.budget, 0);
+             const diff = segmentBudget - newTotal;
+             if (diff !== 0 && itemsToDistribute.length > 0) {
+                 itemsToDistribute[0].budget += diff;
+             }
+             
+             newSegments[segmentIndex] = { ...segment, mediaSplit: currentSplit };
+             setCampaign({ ...campaign, audienceSegments: newSegments });
+          }
+      }
   };
   
   const budgetIsSet = campaign.audienceSegments.every(s => typeof s.budget === 'number');
@@ -195,46 +229,93 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
           )}
 
           <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-2">Paid Media: Total Budget Allocation</h3>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-8 flex overflow-hidden mb-6">
-              {campaign.audienceSegments.map((segment, index) => {
-                const percentage = ((segment.budget || 0) / campaign.paidMediaBudget) * 100;
-                const colors = ['bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-teal-500', 'bg-sky-500'];
-                return (
-                  <div key={index} className={`h-full ${colors[index % colors.length]} flex items-center justify-center text-white text-xs font-bold`} style={{ width: `${percentage}%` }}>
-                   {percentage > 10 && segment.name}
-                  </div>
-                );
-              })}
-            </div>
-
+            <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">Paid Media: Budget Allocation</h3>
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {campaign.audienceSegments.map((segment, index) => {
                  const colors = ['border-indigo-500', 'border-purple-500', 'border-pink-500', 'border-teal-500', 'border-sky-500'];
                  const segmentBudget = segment.budget || 0;
+                 const currentAllocated = segment.mediaSplit?.reduce((sum, m) => sum + m.budget, 0) || 0;
+                 const unallocated = segmentBudget - currentAllocated;
+                 
                  return (
                   <div key={index} className={`p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-l-4 ${colors[index % colors.length]}`}>
-                    <div className="flex justify-between mb-4 font-bold text-slate-800 dark:text-slate-200">
-                      <h4>{segment.name}</h4>
-                      <span>${segmentBudget.toLocaleString()}</span>
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-bold text-slate-800 dark:text-slate-200">{segment.name}</h4>
+                      <div className="text-right">
+                          <div className="font-bold text-slate-800 dark:text-slate-200">${segmentBudget.toLocaleString()}</div>
+                      </div>
                     </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mb-1">
+                        <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(currentAllocated / segmentBudget) * 100}%` }}></div>
+                    </div>
+                    <div className="flex justify-between items-center mb-4 text-xs">
+                         <span className="text-slate-500">Allocated: ${(currentAllocated).toLocaleString()}</span>
+                         {unallocated > 5 ? (
+                             <span className="text-amber-600 font-medium">Remaining: ${unallocated.toLocaleString()}</span>
+                         ) : (
+                             <span className="text-green-600 font-medium">Fully Allocated</span>
+                         )}
+                    </div>
+
                     <div className="space-y-4">
                         {SUPPORTED_CHANNELS.map((channel) => {
                             const mediaItem = segment.mediaSplit?.find(m => m.channel === channel);
-                            const isActive = !!mediaItem;
                             const budget = mediaItem ? mediaItem.budget : 0;
                             const percent = segmentBudget > 0 ? Math.round((budget / segmentBudget) * 100) : 0;
+                            const isActive = budget > 0;
+
                             return (
-                                <div key={channel} className="flex items-center text-sm">
-                                    <input type="checkbox" checked={isActive} onChange={(e) => handleUpdateSplit(index, channel, percent, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded mr-3" />
-                                    <div className="w-28 shrink-0 text-slate-700 dark:text-slate-300 truncate">{channel}</div>
-                                    <input type="range" min="0" max="100" value={percent} disabled={!isActive} onChange={(e) => handleUpdateSplit(index, channel, parseInt(e.target.value), true)} 
-                                        className="grow mx-3 h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:opacity-50" />
-                                    <div className="w-20 text-right font-mono text-xs text-slate-600">${isActive ? budget.toLocaleString() : '-'}</div>
+                                <div key={channel} className="group">
+                                    <div className="flex justify-between items-center text-sm mb-1">
+                                        <span className={`font-medium ${isActive ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}>
+                                            {channel}
+                                        </span>
+                                        <span className={`font-mono text-xs ${isActive ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-400'}`}>
+                                            {percent}%
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="relative h-4 flex items-center">
+                                        <div className="absolute w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-lg overflow-hidden">
+                                            <div 
+                                                className={`h-full ${isActive ? 'bg-indigo-500' : 'bg-transparent'}`} 
+                                                style={{ width: `${percent}%` }}
+                                            ></div>
+                                        </div>
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="100" 
+                                            step="1"
+                                            value={percent} 
+                                            onChange={(e) => handleUpdateSplit(index, channel, parseInt(e.target.value))} 
+                                            className="absolute w-full h-full opacity-0 cursor-pointer z-10" 
+                                            title={unallocated <= 0 && !isActive ? "Reduce other channels to increase" : "Adjust allocation"}
+                                        />
+                                         {/* Thumb simulation */}
+                                        <div 
+                                            className={`absolute h-3 w-3 rounded-full shadow pointer-events-none transition-colors ${isActive ? 'bg-white border-2 border-indigo-600' : 'bg-slate-300 border border-slate-400'}`}
+                                            style={{ left: `calc(${percent}% - 6px)` }}
+                                        ></div>
+                                    </div>
                                 </div>
                             );
                         })}
                     </div>
+                    
+                    {unallocated > 5 && (
+                        <div className="mt-4 pt-2 border-t border-slate-200 dark:border-slate-700 text-center">
+                            <button 
+                                onClick={() => distributeRemaining(index)}
+                                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium underline"
+                            >
+                                Distribute Remaining Budget (${unallocated.toLocaleString()})
+                            </button>
+                        </div>
+                    )}
                   </div>
                 );
               })}
