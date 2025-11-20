@@ -1,26 +1,41 @@
 
+export interface Creative {
+  id: string;
+  imagePrompt: string;
+  notificationText: string;
+  imageUrl: string; // base64 data URI
+  mimeType: string;
+  isGenerating?: boolean;
+}
+
+export interface CreativeGroup {
+    name: string; // e.g., "Social Stories", "Feed Posts"
+    aspectRatio: '1:1' | '9:16' | '16:9';
+    channels: string[];
+    imagePrompts: string[];
+    headlines: string[]; // Replaces notificationTexts for broader usage
+    generatedCreative?: Creative;
+    selectedPromptIndex?: number;
+    selectedHeadlineIndex?: number;
+}
+
 export interface AudienceSegment {
   name: string;
   description: string;
   penPortrait: string;
   keyMotivations: string[];
-  imagePrompts: string[];
-  notificationTexts: string[];
   imageSearchKeywords: string[];
+  // Legacy fields (optional now, as we generate in step 4)
+  imagePrompts?: string[]; 
+  notificationTexts?: string[]; 
+  
   isSelected?: boolean;
-  creative?: Creative;
   budget?: number;
   mediaSplit?: { channel: string; budget: number }[];
   rationale?: string;
-}
-
-export interface Creative {
-  id: string;
-  imagePrompt: string;
-  notificationText: string;
-  imageUrl: string; // 1024x1024, base64 data URI
-  mimeType: string;
-  isGenerating?: boolean;
+  
+  // New field for grouped creatives
+  creativeGroups?: CreativeGroup[];
 }
 
 export interface SupportingDocument {
