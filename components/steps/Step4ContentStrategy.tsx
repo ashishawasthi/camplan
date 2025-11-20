@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Campaign, Creative, CreativeGroup } from '../../types';
-import { generateImagenImage, generateImageFromProduct, generateCreativeStrategy } from '../../services/geminiService';
+import { generateImage, generateImageFromProduct, generateCreativeStrategy } from '../../services/geminiService';
 import Button from '../common/Button';
 import Card from '../common/Card';
 import ImageEditorModal from '../ImageEditorModal';
@@ -19,7 +19,7 @@ interface Props {
 
 const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, setError }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; groupIndex: number; creative: Creative } | null>(null);
+  const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; groupIndex: number; creative: Creative; aspectRatio: '1:1' | '9:16' | '16:9' } | null>(null);
   const [regenState, setRegenState] = useState<{ segmentIndex: number; groupIndex: number } | null>(null);
 
   // On mount, check if strategies exist. If not, generate them.
@@ -86,7 +86,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
 
       const result = campaign.productImage 
         ? await generateImageFromProduct(campaign.productImage, prompt, instructions)
-        : await generateImagenImage(prompt, aspectRatio, instructions);
+        : await generateImage(prompt, aspectRatio, instructions);
         
       group.generatedCreative = {
         id: new Date().toISOString(),
@@ -233,34 +233,42 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                         )}
                                     </div>
 
-                                    <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                        {group.generatedCreative?.isGenerating ? (
-                                            <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-indigo-100">
-                                                <SparklesIcon className="h-8 w-8 text-indigo-500 animate-pulse mx-auto mb-2" />
-                                                <p className="text-sm text-slate-500">Generating high-quality creative...</p>
-                                            </div>
-                                        ) : group.generatedCreative?.imageUrl ? (
-                                            <div className="relative group">
-                                                <div className={`mx-auto bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center ${getAspectRatioClass(group.aspectRatio)}`}>
-                                                    <img 
-                                                        src={group.generatedCreative.imageUrl} 
-                                                        alt="Generated" 
-                                                        className="w-full h-full object-contain" 
-                                                    />
+                                    {group.generatedCreative?.isGenerating || group.generatedCreative?.imageUrl ? (
+                                        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                            {group.generatedCreative?.isGenerating ? (
+                                                <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-indigo-100">
+                                                    <SparklesIcon className="h-8 w-8 text-indigo-500 animate-pulse mx-auto mb-2" />
+                                                    <p className="text-sm text-slate-500">Generating high-quality creative...</p>
                                                 </div>
-                                                <button onClick={() => setEditingCreative({ segmentIndex, groupIndex: realIndex, creative: group.generatedCreative! })} className="absolute top-2 right-2 p-2 bg-white rounded shadow hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <PencilIcon className="h-4 w-4 text-slate-700" />
-                                                </button>
-                                                <div className="mt-2 text-center">
-                                                    <Button variant="ghost" onClick={() => setRegenState({ segmentIndex, groupIndex: realIndex })}>Regenerate</Button>
+                                            ) : (
+                                                <div className="relative group">
+                                                    <div className={`mx-auto bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center ${getAspectRatioClass(group.aspectRatio)}`}>
+                                                        <img 
+                                                            src={group.generatedCreative?.imageUrl} 
+                                                            alt="Generated" 
+                                                            className="w-full h-full object-contain" 
+                                                        />
+                                                    </div>
+                                                    <button onClick={() => setEditingCreative({ segmentIndex, groupIndex: realIndex, creative: group.generatedCreative!, aspectRatio: group.aspectRatio as any })} className="absolute top-2 right-2 p-2 bg-white rounded shadow hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <PencilIcon className="h-4 w-4 text-slate-700" />
+                                                    </button>
+                                                    <div className="mt-2 text-center">
+                                                        <Button variant="ghost" onClick={() => setRegenState({ segmentIndex, groupIndex: realIndex })}>Regenerate</Button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <Button onClick={() => handleGenerateImage(segmentIndex, realIndex)} className="w-full">
-                                                <SparklesIcon className="w-4 h-4 mr-2" /> Generate Creative
-                                            </Button>
-                                        )}
-                                    </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-end mt-2">
+                                            <button 
+                                                onClick={() => handleGenerateImage(segmentIndex, realIndex)} 
+                                                className="h-8 w-8 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 hover:text-indigo-600 flex items-center justify-center transition-colors"
+                                                title="Generate Preview (Optional)"
+                                            >
+                                                <SparklesIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </Card>
                                 );
                             })}
@@ -272,7 +280,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       )}
       
       {editingCreative && (
-        <ImageEditorModal creative={editingCreative.creative} onClose={() => setEditingCreative(null)} 
+        <ImageEditorModal creative={editingCreative.creative} aspectRatio={editingCreative.aspectRatio} onClose={() => setEditingCreative(null)} 
             onSave={(newCreative) => {
                 const newSegments = [...campaign.audienceSegments];
                 const segment = newSegments[editingCreative.segmentIndex];

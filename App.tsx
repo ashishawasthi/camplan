@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Campaign } from './types';
 import Step1CampaignDetails from './components/steps/Step1CampaignDetails';
 import Step2TargetAudience from './components/steps/Step2TargetAudience';
@@ -9,6 +8,7 @@ import Button from './components/common/Button';
 import { DownloadIcon } from './components/icons/DownloadIcon';
 import { PrintIcon } from './components/icons/PrintIcon';
 import StepIndicator from './components/StepIndicator';
+import Card from './components/common/Card';
 
 // Assuming JSZip is available globally from the script tag in index.html
 declare var JSZip: any;
@@ -22,6 +22,46 @@ const App: React.FC = () => {
   const [isAudienceCompleted, setIsAudienceCompleted] = useState(false);
   const [isMediaPlanCompleted, setIsMediaPlanCompleted] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [isCheckingKey, setIsCheckingKey] = useState(true);
+
+  useEffect(() => {
+    checkApiKey();
+
+    const handleAuthError = () => {
+        setHasApiKey(false);
+    };
+    window.addEventListener('gemini-auth-error', handleAuthError);
+    return () => window.removeEventListener('gemini-auth-error', handleAuthError);
+  }, []);
+
+  const checkApiKey = async () => {
+    try {
+      const aistudio = (window as any).aistudio;
+      if (aistudio && aistudio.hasSelectedApiKey) {
+        const hasKey = await aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+      } else {
+        // Fallback for environments without the wrapper
+        setHasApiKey(true);
+      }
+    } catch (e) {
+      console.error(e);
+      setHasApiKey(false);
+    } finally {
+      setIsCheckingKey(false);
+    }
+  };
+
+  const handleSelectKey = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio && aistudio.openSelectKey) {
+      await aistudio.openSelectKey();
+      // Assume success after closing dialog
+      setHasApiKey(true);
+    }
+  };
   
   const updateCampaign = useCallback((updatedCampaign: Campaign) => {
     setCampaign(updatedCampaign);
@@ -58,8 +98,6 @@ const App: React.FC = () => {
     try {
         const zip = new JSZip();
         let markdownContent = `# Campaign Plan: ${campaign.campaignName}\n\n`;
-        // ... (Export logic logic simplified for brevity, assumes mostly similar structure but adapted for creative groups)
-        // Detailed export logic would need to iterate over creativeGroups instead of single creative
         
         // Basic Metadata
         markdownContent += `## Overview\nBudget: $${campaign.paidMediaBudget}\nDates: ${campaign.startDate} - ${campaign.endDate}\n\n`;
@@ -102,6 +140,25 @@ const App: React.FC = () => {
         setIsExporting(false);
     }
   };
+
+  if (isCheckingKey) {
+      return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin h-8 w-8 border-2 border-indigo-600 rounded-full border-t-transparent"></div></div>;
+  }
+
+  if (!hasApiKey) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <Card className="max-w-md w-full text-center p-8">
+          <h1 className="text-2xl font-bold text-slate-900 mb-4">Campaign Planner</h1>
+          <p className="text-slate-600 mb-8">To use the high-quality image generation features (Gemini 3 Pro), you must select a paid API key.</p>
+          <Button onClick={handleSelectKey}>Select API Key</Button>
+          <p className="mt-6 text-xs text-slate-400">
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="underline hover:text-slate-600">Billing Information</a>
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const steps = [
       { id: 1, name: 'Campaign Details' },

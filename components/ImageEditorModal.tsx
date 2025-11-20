@@ -6,12 +6,13 @@ import { SparklesIcon } from './icons/SparklesIcon';
 
 interface Props {
   creative: Creative;
+  aspectRatio?: '1:1' | '9:16' | '16:9';
   onClose: () => void;
   onSave: (creative: Creative) => void;
   setError: (error: string | null) => void;
 }
 
-const ImageEditorModal: React.FC<Props> = ({ creative, onClose, onSave, setError }) => {
+const ImageEditorModal: React.FC<Props> = ({ creative, aspectRatio = '1:1', onClose, onSave, setError }) => {
   const [prompt, setPrompt] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null);
@@ -26,7 +27,12 @@ const ImageEditorModal: React.FC<Props> = ({ creative, onClose, onSave, setError
     setEditedImageUrl(null);
     try {
       const base64Data = originalImageUrl.split(',')[1];
-      const { base64, mimeType } = await editImage(base64Data, creative.mimeType, prompt);
+      const { base64, mimeType } = await editImage(
+        base64Data, 
+        creative.mimeType, 
+        prompt, 
+        aspectRatio as '1:1' | '9:16' | '16:9'
+      );
       setEditedImageUrl(`data:${mimeType};base64,${base64}`);
       setEditedMimeType(mimeType);
     } catch (err) {
@@ -46,6 +52,12 @@ const ImageEditorModal: React.FC<Props> = ({ creative, onClose, onSave, setError
     }
   };
 
+  const getAspectClass = (ratio: string) => {
+    if (ratio === '9:16') return 'aspect-[9/16] max-h-[400px]';
+    if (ratio === '16:9') return 'aspect-[16/9] w-full';
+    return 'aspect-square';
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto">
@@ -58,18 +70,20 @@ const ImageEditorModal: React.FC<Props> = ({ creative, onClose, onSave, setError
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
             <div>
               <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">Original</h3>
-              <img src={originalImageUrl} alt="Original Creative" className="w-full rounded-lg" />
+              <div className={`w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center ${getAspectClass(aspectRatio)}`}>
+                <img src={originalImageUrl} alt="Original Creative" className="w-full h-full object-contain" />
+              </div>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">Edited</h3>
-              <div className="w-full aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-700">
+              <div className={`w-full bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-700 overflow-hidden ${getAspectClass(aspectRatio)}`}>
                 {isEditing ? (
                   <div className="flex flex-col items-center">
                     <SparklesIcon className="h-8 w-8 text-indigo-500 animate-pulse" />
                     <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Applying edit...</p>
                   </div>
                 ) : editedImageUrl ? (
-                  <img src={editedImageUrl} alt="Edited Creative" className="w-full rounded-lg" />
+                  <img src={editedImageUrl} alt="Edited Creative" className="w-full h-full object-contain" />
                 ) : (
                   <p className="text-slate-500 dark:text-slate-400 text-sm p-4 text-center">Your edited image will appear here.</p>
                 )}

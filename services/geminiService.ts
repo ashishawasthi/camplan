@@ -4,8 +4,6 @@ import { runGenerateContent } from './geminiClient';
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
 
-const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY ?? 'MISSING_API_KEY' });
-
 // Helper to robustly extract JSON from markdown code blocks or raw text
 const extractJson = (text: string) => {
     const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -220,32 +218,33 @@ export const generateCreativeStrategy = async (
     }
 }
 
-export const generateImagenImage = async (prompt: string, aspectRatio: '1:1' | '9:16' | '16:9' = '1:1', instructions?: string): Promise<{ base64: string; mimeType: string }> => {
-  let fullPrompt = `${prompt}. High resolution, 4k, photorealistic, professional advertising photography, highly detailed, cinematic lighting, shallow depth of field where appropriate.`;
+export const generateImage = async (prompt: string, aspectRatio: '1:1' | '9:16' | '16:9' = '1:1', instructions?: string): Promise<{ base64: string; mimeType: string }> => {
+  let fullPrompt = `${prompt}. High resolution, photorealistic, professional advertising photography, highly detailed, cinematic lighting.`;
   if (instructions) fullPrompt += `\n\nAdditional instructions: "${instructions}"`;
 
   try {
-      const ai = getAiClient();
-      // Using Imagen 3/4 (via generateImages) for high quality and aspect ratio control
-      const response = await ai.models.generateImages({
-          model: 'imagen-4.0-generate-001',
-          prompt: fullPrompt,
+      // Using gemini-3-pro-image-preview for high quality image generation
+      const response = await runGenerateContent({
+          model: 'gemini-3-pro-image-preview',
+          contents: { parts: [{ text: fullPrompt }] },
           config: {
-              numberOfImages: 1,
-              outputMimeType: 'image/jpeg',
-              aspectRatio: aspectRatio,
+              imageConfig: {
+                  aspectRatio: aspectRatio,
+                  imageSize: '1K'
+              }
           },
       });
-      
-      const image = response.generatedImages?.[0]?.image;
-      if (image?.imageBytes) {
-          return { base64: image.imageBytes, mimeType: 'image/jpeg' };
+
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+            return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' };
+        }
       }
-       throw new Error('No image data received from API.');
+      throw new Error('No image data received from API.');
 
   } catch (error) {
     console.error('Error generating image:', error);
-    throw new Error('Failed to generate image with Imagen.');
+    throw new Error('Failed to generate image.');
   }
 };
 
@@ -254,9 +253,8 @@ export const generateImageFromProduct = async (
   prompt: string,
   instructions?: string,
 ): Promise<{ base64: string; mimeType: string }> => {
-  // gemini-2.5-flash-image does not support aspect ratio config in the simple way. 
-  // We will stick to 1:1 generation or rely on the model to interpret composition from prompt.
-  let fullPrompt = `Using the provided product image, create a new photorealistic image: "${prompt}". Maintain realistic scale. Output a square 1:1 image. High quality, professional lighting.`;
+  // Using gemini-3-pro-image-preview for product editing/placement
+  let fullPrompt = `Using the provided product image, create a new photorealistic image: "${prompt}". Maintain realistic scale. High quality, professional lighting.`;
   if (instructions) fullPrompt += `\n\nInstruction: "${instructions}"`;
   
   const imagePart = { inlineData: { data: productImage.data, mimeType: productImage.mimeType } };
@@ -264,14 +262,20 @@ export const generateImageFromProduct = async (
 
   try {
     const response = await runGenerateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-3-pro-image-preview',
       contents: { parts: [imagePart, textPart] },
-      config: { responseModalities: [Modality.IMAGE] },
+      config: { 
+          imageConfig: {
+              aspectRatio: '1:1', // Default square for product shots
+              imageSize: '1K'
+          }
+      },
     });
 
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData) {
-      return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+            return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' };
+        }
     }
     throw new Error('No image data received.');
   } catch (error) {
@@ -295,7 +299,7 @@ export const generateNotificationText = async (prompt: string, landingPageUrl: s
     }
 };
 
-export const editImage = async (originalBase64: string, mimeType: string, instructions: string): Promise<{ base64: string; mimeType: string }> => {
+export const editImage = async (originalBase64: string, mimeType: string, instructions: string, aspectRatio: '1:1' | '9:16' | '16:9' = '1:1'): Promise<{ base64: string; mimeType: string }> => {
     let prompt = `Edit this image: ${instructions}. Return the edited image. High quality.`;
     
     const imagePart = { inlineData: { data: originalBase64, mimeType: mimeType } };
@@ -303,14 +307,20 @@ export const editImage = async (originalBase64: string, mimeType: string, instru
 
     try {
         const response = await runGenerateContent({
-            model: 'gemini-2.5-flash-image',
+            model: 'gemini-3-pro-image-preview',
             contents: { parts: [imagePart, textPart] },
-            config: { responseModalities: [Modality.IMAGE] },
+            config: {
+                imageConfig: {
+                    aspectRatio: aspectRatio,
+                    imageSize: '1K'
+                }
+            }
         });
         
-        const part = response.candidates?.[0]?.content?.parts?.[0];
-        if (part?.inlineData) {
-            return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' };
+            }
         }
         throw new Error('No image data received for edit.');
     } catch (error) {
