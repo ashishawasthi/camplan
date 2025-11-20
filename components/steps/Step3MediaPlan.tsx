@@ -38,20 +38,26 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
     setIsLoadingPaid(true);
     setError(null);
     try {
-      const currentCampaign = campaignRef.current;
+      // Capture request context for the API call
+      const requestCampaign = campaignRef.current;
+      
       const { analysis, splits, sources } = await getBudgetSplit(
-        currentCampaign.audienceSegments, 
-        currentCampaign.paidMediaBudget,
-        currentCampaign.country,
-        currentCampaign.campaignName,
-        currentCampaign.landingPageUrl,
-        currentCampaign.customerAction,
-        currentCampaign.productBenefits,
+        requestCampaign.audienceSegments, 
+        requestCampaign.paidMediaBudget,
+        requestCampaign.country,
+        requestCampaign.campaignName,
+        requestCampaign.landingPageUrl,
+        requestCampaign.customerAction,
+        requestCampaign.productBenefits,
         instructions
       );
 
+      // CRITICAL FIX: Fetch the latest state *after* the await to ensure we don't overwrite 
+      // concurrent updates (like Owned Media Analysis which finishes faster).
+      const latestCampaign = campaignRef.current;
+
       let totalAllocated = 0;
-      const updatedSegments = currentCampaign.audienceSegments.map(segment => {
+      const updatedSegments = latestCampaign.audienceSegments.map(segment => {
         const splitData = splits.find(s => s.segmentName === segment.name);
         if (!splitData) return { ...segment, budget: 0, mediaSplit: [] };
         totalAllocated += splitData.allocatedBudget;
@@ -59,12 +65,12 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
       });
       
       // Normalization logic (ensure total equals budget)
-      if (totalAllocated > 0 && Math.abs(totalAllocated - currentCampaign.paidMediaBudget) > 1) { 
-        const ratio = currentCampaign.paidMediaBudget / totalAllocated;
+      if (totalAllocated > 0 && Math.abs(totalAllocated - latestCampaign.paidMediaBudget) > 1) { 
+        const ratio = latestCampaign.paidMediaBudget / totalAllocated;
         let runningTotal = 0;
         updatedSegments.forEach((segment, index) => {
           if (index === updatedSegments.length - 1) {
-             segment.budget = currentCampaign.paidMediaBudget - runningTotal;
+             segment.budget = latestCampaign.paidMediaBudget - runningTotal;
           } else {
             const newBudget = Math.round((segment.budget || 0) * ratio);
             segment.budget = newBudget;
@@ -87,7 +93,7 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
         });
       }
 
-      setCampaign({ ...currentCampaign, audienceSegments: updatedSegments, budgetAnalysis: analysis, budgetSources: sources });
+      setCampaign({ ...latestCampaign, audienceSegments: updatedSegments, budgetAnalysis: analysis, budgetSources: sources });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       const currentError = errorRef.current;
@@ -108,6 +114,7 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
             currentCampaign.importantCustomers,
             currentCampaign.customerSegment,
         );
+        // Access ref again after await to ensure we are merging into latest state
         setCampaign({ ...campaignRef.current, ownedMediaAnalysis: analysis});
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';

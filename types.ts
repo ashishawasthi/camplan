@@ -14,6 +14,7 @@ export interface CreativeGroup {
     channels: string[];
     imagePrompts: string[];
     headlines: string[]; // Replaces notificationTexts for broader usage
+    pushNotes?: string[]; // Text for owned media/push notifications
     generatedCreative?: Creative;
     selectedPromptIndex?: number;
     selectedHeadlineIndex?: number;
@@ -56,6 +57,7 @@ export interface CompetitorProduct {
   brand: string;
   keyFeatures: string[];
   targetAudience: string;
+  prosVsCons?: string;
 }
 
 export interface CompetitorAnalysis {

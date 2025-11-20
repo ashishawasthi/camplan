@@ -1,11 +1,19 @@
-
-import { GoogleGenAI, Type, Modality } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import { AudienceSegment, SupportingDocument, GroundingSource, CompetitorAnalysis, OwnedMediaAnalysis, CreativeGroup } from '../types';
 import { runGenerateContent } from './geminiClient';
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
 
 const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY ?? 'MISSING_API_KEY' });
+
+// Helper to robustly extract JSON from markdown code blocks or raw text
+const extractJson = (text: string) => {
+    const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match) {
+        return match[1];
+    }
+    return text.trim();
+};
 
 export const getAudienceSegments = async (
   campaignName: string,
@@ -34,7 +42,12 @@ export const getAudienceSegments = async (
       prompt += `
       First, analyze the provided product details page for our product: ${productDetailsUrl}.
       Second, use Google Search to identify 2-3 key competitors for this product in ${country}.
-      Third, create a competitor comparison table. For your product (labeled with brand 'Our Bank') and each competitor, include: Product Name, Brand, Key Features (as a list of strings), and a description of their primary Target Audience.
+      Third, create a DETAILED competitor comparison table. For your product (labeled with brand 'Our Bank') and each competitor, include:
+        - Product Name
+        - Brand
+        - Key Features (as a list of strings)
+        - Target Audience (who is this for?)
+        - 'prosVsCons': A detailed string text comparing it to our product (Our Pros vs Their Cons).
       Fourth, provide a brief summary of your findings from this competitive analysis, highlighting our product's key differentiators or weaknesses.
       `;
   }
@@ -87,7 +100,7 @@ export const getAudienceSegments = async (
       prompt += `
   "competitorAnalysis": {
     "summary": "string",
-    "comparisonTable": [{ "productName": "string", "brand": "string", "keyFeatures": ["string"], "targetAudience": "string" }]
+    "comparisonTable": [{ "productName": "string", "brand": "string", "keyFeatures": ["string"], "targetAudience": "string", "prosVsCons": "string" }]
   },`;
   }
   prompt += `
@@ -113,13 +126,14 @@ export const getAudienceSegments = async (
   }
 
   try {
+    // Do NOT use responseMimeType with tools, as it is often unsupported/conflicts.
     const response = await runGenerateContent({
       model: 'gemini-2.5-pro',
       contents: { parts },
       config: { tools: [{googleSearch: {}}] }
     });
     
-    const jsonText = response.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+    const jsonText = extractJson(response.text);
     const parsed = JSON.parse(jsonText);
     const segmentsWithSelection: AudienceSegment[] = parsed.segments.map((segment: Omit<AudienceSegment, 'isSelected'>) => ({
       ...segment,
@@ -160,16 +174,20 @@ export const generateCreativeStrategy = async (
         
         Active Media Channels: ${channels.join(', ')}
 
-        Based on the active channels, categorize them into appropriate Creative Groups (e.g., "Social Stories" for TikTok/Instagram, "Feed Ads" for Facebook/LinkedIn/Display, "Owned" for Email).
+        Based on the active channels, categorize them into appropriate Creative Groups (e.g., "Social Stories" for TikTok/Instagram, "Feed Ads" for Facebook/LinkedIn/Display, "Owned" for Email/Push).
         
         For EACH group, provide:
         1. A Group Name.
-        2. The Aspect Ratio (Use "9:16" for stories/vertical video, "1:1" for feeds/display, "16:9" for headers/banners).
+        2. The Aspect Ratio. You MUST select one of the following exactly: "1:1", "9:16", or "16:9".
         3. The channels belonging to this group.
         4. 3 distinct, highly descriptive Image Prompts suitable for generating a high-quality ad image in that format.
+           - IMPORTANT: If the ad concept does not strictly require showing the physical product (e.g. a specific credit card design), describe a LIFESTYLE scene, human emotion, or atmospheric setting instead. Avoid describing generic "credit cards" or "bank apps" in the prompt unless essential, as these often look fake. Focus on the benefit, the feeling, or the outcome.
+           - If product imagery is NOT required to convey the message, do NOT include it in the prompt.
            - Ensure the prompt describes the composition to fit the aspect ratio (e.g. "vertical shot" for 9:16).
+           - Include specific details about the subject, lighting (e.g., "soft daylight", "cinematic neon"), mood (e.g., "energetic", "trustworthy"), and style (e.g., "candid lifestyle", "studio editorial").
            - Do NOT use real brand names.
         5. 3 distinct Headlines or Notification Texts (short, punchy copy) suitable for these channels.
+        6. 3 distinct Push Notification texts (short, engaging, action-oriented) suitable for mobile app notifications or SMS owned media channels (as 'pushNotes').
 
         ${instructions ? `Additional User Instructions: ${instructions}` : ''}
 
@@ -180,19 +198,21 @@ export const generateCreativeStrategy = async (
                 "aspectRatio": "1:1" | "9:16" | "16:9",
                 "channels": ["string"],
                 "imagePrompts": ["string", "string", "string"],
-                "headlines": ["string", "string", "string"]
+                "headlines": ["string", "string", "string"],
+                "pushNotes": ["string", "string", "string"]
             }
         ]
     `;
 
     try {
+        // No tools here, so responseMimeType is safe and recommended for strict JSON.
         const response = await runGenerateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: { responseMimeType: 'application/json' }
         });
         
-        const jsonText = response.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+        const jsonText = extractJson(response.text);
         return JSON.parse(jsonText);
     } catch (error) {
         console.error("Error generating creative strategy:", error);
@@ -200,13 +220,13 @@ export const generateCreativeStrategy = async (
     }
 }
 
-export const generateImagenImage = async (prompt: string, aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1', instructions?: string): Promise<{ base64: string; mimeType: string }> => {
-  let fullPrompt = prompt;
+export const generateImagenImage = async (prompt: string, aspectRatio: '1:1' | '9:16' | '16:9' = '1:1', instructions?: string): Promise<{ base64: string; mimeType: string }> => {
+  let fullPrompt = `${prompt}. High resolution, 4k, photorealistic, professional advertising photography, highly detailed, cinematic lighting, shallow depth of field where appropriate.`;
   if (instructions) fullPrompt += `\n\nAdditional instructions: "${instructions}"`;
 
   try {
       const ai = getAiClient();
-      // Using Imagen 3 (via generateImages) for high quality and aspect ratio control
+      // Using Imagen 3/4 (via generateImages) for high quality and aspect ratio control
       const response = await ai.models.generateImages({
           model: 'imagen-4.0-generate-001',
           prompt: fullPrompt,
@@ -225,7 +245,6 @@ export const generateImagenImage = async (prompt: string, aspectRatio: '1:1' | '
 
   } catch (error) {
     console.error('Error generating image:', error);
-    // Fallback or helpful error
     throw new Error('Failed to generate image with Imagen.');
   }
 };
@@ -237,7 +256,7 @@ export const generateImageFromProduct = async (
 ): Promise<{ base64: string; mimeType: string }> => {
   // gemini-2.5-flash-image does not support aspect ratio config in the simple way. 
   // We will stick to 1:1 generation or rely on the model to interpret composition from prompt.
-  let fullPrompt = `Using the provided product image, create a new photorealistic image: "${prompt}". Maintain realistic scale. Output a square 1:1 image.`;
+  let fullPrompt = `Using the provided product image, create a new photorealistic image: "${prompt}". Maintain realistic scale. Output a square 1:1 image. High quality, professional lighting.`;
   if (instructions) fullPrompt += `\n\nInstruction: "${instructions}"`;
   
   const imagePart = { inlineData: { data: productImage.data, mimeType: productImage.mimeType } };
@@ -269,132 +288,160 @@ export const generateNotificationText = async (prompt: string, landingPageUrl: s
 
     try {
       const response = await runGenerateContent({ model: 'gemini-2.5-flash', contents: fullPrompt });
-      return response.text.trim().replace(/^"|"$/g, '');
+      return response.text.trim();
     } catch (error) {
-      console.error("Error generating text:", error);
-      throw new Error("Failed to generate text.");
+        console.error("Error generating text:", error);
+        throw new Error("Failed to generate text.");
     }
 };
 
-export const editNotificationText = async (originalText: string, editPrompt: string, landingPageUrl: string, brandValues?: string): Promise<string> => {
-    let fullPrompt = `Revise this marketing text: "${originalText}". Instruction: "${editPrompt}". Link: ${landingPageUrl}.`;
-    if (brandValues) fullPrompt += `\nValues: ${brandValues}`;
-    fullPrompt += "\nReturn only the revised text.";
+export const editImage = async (originalBase64: string, mimeType: string, instructions: string): Promise<{ base64: string; mimeType: string }> => {
+    let prompt = `Edit this image: ${instructions}. Return the edited image. High quality.`;
+    
+    const imagePart = { inlineData: { data: originalBase64, mimeType: mimeType } };
+    const textPart = { text: prompt };
 
     try {
-      const response = await runGenerateContent({ model: 'gemini-2.5-flash', contents: fullPrompt });
-      return response.text.trim().replace(/^"|"$/g, '');
+        const response = await runGenerateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: { parts: [imagePart, textPart] },
+            config: { responseModalities: [Modality.IMAGE] },
+        });
+        
+        const part = response.candidates?.[0]?.content?.parts?.[0];
+        if (part?.inlineData) {
+            return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
+        }
+        throw new Error('No image data received for edit.');
     } catch (error) {
-      throw new Error("Failed to edit text.");
+        console.error("Error editing image:", error);
+        throw new Error("Failed to edit image.");
     }
-};
+}
 
-export const editImage = async (base64Image: string, mimeType: string, prompt: string): Promise<{ base64: string; mimeType: string }> => {
-  const imagePart = { inlineData: { data: base64Image, mimeType } };
-  const textPart = { text: prompt };
-  try {
-    const response = await runGenerateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: { parts: [imagePart, textPart] },
-      config: { responseModalities: [Modality.IMAGE] },
-    });
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData) return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
-    throw new Error('No edited image data.');
-  } catch (error) {
-    throw new Error('Failed to edit image.');
-  }
-};
+export const editNotificationText = async (originalText: string, instructions: string, landingPageUrl: string, brandValues?: string): Promise<string> => {
+    let prompt = `Rewrite the following marketing copy: "${originalText}".\nInstructions: ${instructions}.\nKeep it concise.`;
+    
+    try {
+      const response = await runGenerateContent({ model: 'gemini-2.5-flash', contents: prompt });
+      return response.text.trim();
+    } catch (error) {
+        console.error("Error editing text:", error);
+        throw new Error("Failed to edit text.");
+    }
+}
 
 export const getBudgetSplit = async (
-  segments: AudienceSegment[], 
-  paidMediaBudget: number,
-  country: string,
-  campaignName: string,
-  landingPageUrl: string,
-  customerAction?: string,
-  productBenefits?: string,
-  instructions?: string
-): Promise<{ 
-  analysis: string; 
-  splits: { segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[];
-  sources: GroundingSource[];
-}> => {
-  const segmentDetails = segments.map(s => `Segment "${s.name}": ${s.description}`).join('\n');
-  let prompt = `
-    As a digital marketing strategist for a consumer bank in ${country}, propose a budget allocation for campaign "${campaignName}".
-    Budget: $${paidMediaBudget}. Landing Page: ${landingPageUrl}.
-    Segments:
-    ${segmentDetails}
-  `;
+    segments: AudienceSegment[],
+    totalBudget: number,
+    country: string,
+    campaignName: string,
+    landingPageUrl: string,
+    customerAction?: string,
+    productBenefits?: string,
+    instructions?: string
+): Promise<{ analysis: string; splits: { segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[], sources: GroundingSource[] }> => {
+    
+    const segmentSummaries = segments.map(s => `- ${s.name}: ${s.description} (Rationale: ${s.rationale})`).join('\n');
 
-  if (customerAction) prompt += `\nGoal: "${customerAction}"`;
-  if (productBenefits) prompt += `\nOffer: "${productBenefits}"`;
-  
-  prompt += `
-    First, analyze the digital marketing landscape in ${country} for financial products using Search. Justify your strategy.
-    Second, propose a budget split across segments, and then across channels (Facebook, Instagram, Google Search, Google Display, TikTok, YouTube, LinkedIn).
-
-    Output ONLY valid JSON:
-    {
-      "analysis": "string (markdown)",
-      "budgetSplits": [
-        { "segmentName": "string", "allocatedBudget": number, "mediaSplit": [{ "channel": "string", "budget": number }] }
-      ]
-    }
-  `;
-  
-  if (instructions) prompt += `\nInstruction: ${instructions}`;
-
-  try {
-    const response = await runGenerateContent({
-      model: 'gemini-2.5-pro',
-      contents: prompt,
-      config: { tools: [{googleSearch: {}}] }
-    });
-
-    const jsonText = response.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
-    const parsed = JSON.parse(jsonText);
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
-    const sources = groundingChunks
-      .filter(chunk => chunk.web && chunk.web.uri && chunk.web.title)
-      .map(chunk => ({ uri: chunk.web!.uri!, title: chunk.web!.title! }));
-
-    return { analysis: parsed.analysis, splits: parsed.budgetSplits, sources };
-  } catch (error) {
-    throw new Error("Failed to generate budget split.");
-  }
-};
-
-export const getOwnedMediaAnalysis = async (
-  campaignName: string,
-  segments: AudienceSegment[],
-  importantCustomers?: string,
-  customerSegment?: string,
-): Promise<OwnedMediaAnalysis> => {
     let prompt = `
-        Analyze if campaign "${campaignName}" is suitable for Owned Media targeting.
-        Segments: ${segments.map(s => s.name).join(', ')}.
-        ${importantCustomers ? `Target: ${importantCustomers}` : ''}
+        Act as a Media Planner for a consumer bank in ${country}.
+        Campaign: "${campaignName}".
+        Total Budget: $${totalBudget}.
+        Objective: ${customerAction || 'Acquisition'}.
+        Product Benefits: ${productBenefits || 'N/A'}.
+        Landing Page: ${landingPageUrl}.
+
+        Target Audience Segments:
+        ${segmentSummaries}
+
+        Task:
+        1. Analyze the segments and recommend a strategic budget allocation across Paid Media channels (Facebook, Instagram, Google Search, Google Display, TikTok, YouTube, LinkedIn).
+        2. Provide a "Budget Analysis" (markdown format) explaining the strategy. Why did you prioritize certain segments or channels? Use Google Search to ground your strategy in current media consumption trends in ${country}.
+        3. Output a JSON structure for the budget split.
+
+        ${instructions ? `Additional Instructions: ${instructions}` : ''}
         
-        Output ONLY valid JSON:
+        The JSON output must strictly follow this schema:
         {
-          "isApplicable": boolean,
-          "justification": "string",
-          "analysisRecommendations": "string (markdown)",
-          "recommendedChannels": ["string"]
+            "analysis": "string (markdown)",
+            "splits": [
+                {
+                    "segmentName": "string (must match input name exactly)",
+                    "allocatedBudget": number,
+                    "mediaSplit": [
+                        { "channel": "string", "budget": number }
+                    ]
+                }
+            ]
         }
+        
+        Ensure the sum of all 'allocatedBudget' equals $${totalBudget}.
+        Ensure the sum of 'mediaSplit' budgets equals the 'allocatedBudget' for that segment.
     `;
 
+    try {
+        // Do NOT use responseMimeType with tools, as it is often unsupported/conflicts.
+        const response = await runGenerateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: { 
+                tools: [{googleSearch: {}}] 
+            }
+        });
+
+        const jsonText = extractJson(response.text);
+        const parsed = JSON.parse(jsonText);
+        
+        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+        const sources = groundingChunks
+        .filter(chunk => chunk.web && chunk.web.uri && chunk.web.title)
+        .map(chunk => ({ uri: chunk.web!.uri!, title: chunk.web!.title! }));
+
+        return { analysis: parsed.analysis, splits: parsed.splits, sources };
+
+    } catch (error) {
+        console.error("Error fetching budget split:", error);
+        throw new Error("Failed to generate media plan.");
+    }
+}
+
+export const getOwnedMediaAnalysis = async (
+    campaignName: string,
+    segments: AudienceSegment[],
+    importantCustomers?: string,
+    customerSegment?: string,
+): Promise<OwnedMediaAnalysis> => {
+    const segmentNames = segments.map(s => s.name).join(', ');
+    let prompt = `
+        As a CRM and Owned Media specialist, analyze if "Owned Media" (Email, SMS, In-App Push, Direct Mail) is a suitable channel for the campaign "${campaignName}".
+        Target Segments: ${segmentNames}.
+        Important Customers: ${importantCustomers || 'N/A'}.
+        Customer Segment: ${customerSegment || 'N/A'}.
+
+        Determine if we should use owned channels to reach existing customers within these segments.
+        Provide a recommendation, justification, and specific tactical ideas.
+
+        Output JSON:
+        {
+            "isApplicable": boolean,
+            "justification": "string",
+            "analysisRecommendations": "string (markdown, suggesting specific messages or flows)",
+            "recommendedChannels": ["string"] (e.g. ["Email", "SMS", "Push"])
+        }
+    `;
+    
     try {
         const response = await runGenerateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
-            config: { responseMimeType: 'application/json' },
+            config: { responseMimeType: 'application/json' }
         });
-        const jsonText = response.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+        const jsonText = extractJson(response.text);
         return JSON.parse(jsonText);
     } catch (error) {
-        throw new Error("Failed to generate owned media analysis.");
+        console.error("Error fetching owned media analysis:", error);
+        // Return a default fallback instead of failing the whole flow
+        return { isApplicable: false, justification: "Analysis failed.", analysisRecommendations: "Could not generate recommendations." };
     }
-};
+}

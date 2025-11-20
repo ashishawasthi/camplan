@@ -127,10 +127,44 @@ const Step2TargetAudience: React.FC<Props> = ({ campaign, setCampaign, onNext, e
         <>
           {campaign.competitorAnalysis && (
             <Card className="mb-8 max-w-6xl mx-auto">
-              <h2 className="text-xl font-bold mb-2 text-slate-800 dark:text-slate-200">Competitor Insight</h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 whitespace-pre-wrap">
+              <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-200">Competitor Insight</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 whitespace-pre-wrap">
                   {renderTextWithCitations(campaign.competitorAnalysis.summary, campaign.segmentSources)}
               </p>
+              
+              {campaign.competitorAnalysis.comparisonTable && campaign.competitorAnalysis.comparisonTable.length > 0 && (
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                          <thead className="bg-slate-50 dark:bg-slate-800">
+                              <tr>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Product</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Brand</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Key Features</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Target Audience</th>
+                                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pros vs Cons</th>
+                              </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-700">
+                              {campaign.competitorAnalysis.comparisonTable.map((product, idx) => (
+                                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/30'}>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{product.productName}</td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{product.brand}</td>
+                                      <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
+                                          <ul className="list-disc list-inside">
+                                              {product.keyFeatures.slice(0, 3).map((feature, fIdx) => (
+                                                  <li key={fIdx} className="truncate max-w-xs" title={feature}>{feature}</li>
+                                              ))}
+                                              {product.keyFeatures.length > 3 && <li className="italic text-xs">+{product.keyFeatures.length - 3} more</li>}
+                                          </ul>
+                                      </td>
+                                      <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{product.targetAudience}</td>
+                                      <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 min-w-[200px]">{product.prosVsCons || '-'}</td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
+              )}
             </Card>
           )}
 

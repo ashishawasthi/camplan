@@ -112,6 +112,15 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       setCampaign({ ...campaign, audienceSegments: newSegments });
   };
 
+  const getAspectRatioClass = (ratio: string) => {
+      switch (ratio) {
+          case '9:16': return 'aspect-[9/16] max-w-[240px]';
+          case '16:9': return 'aspect-[16/9] w-full';
+          case '1:1':
+          default: return 'aspect-square';
+      }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="text-center mb-8">
@@ -131,7 +140,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                 
                 // Filter groups based on active budget from media plan
                 const activeChannelSet = new Set(segment.mediaSplit?.filter(m => m.budget > 0).map(m => m.channel) || []);
-                // Add owned media if available
+                // Add owned media channels if applicable
                 if (campaign.ownedMediaAnalysis?.isApplicable && campaign.ownedMediaAnalysis.recommendedChannels) {
                     campaign.ownedMediaAnalysis.recommendedChannels.forEach(c => activeChannelSet.add(c));
                 }
@@ -144,10 +153,26 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
 
                 return (
                     <div key={segmentIndex} className="border-b border-slate-200 dark:border-slate-700 pb-12 last:border-0">
-                        <h3 className="text-2xl font-bold text-indigo-700 dark:text-indigo-400 mb-4">{segment.name}</h3>
+                        <h3 className="text-2xl font-bold text-indigo-700 dark:text-indigo-400 mb-2">{segment.name}</h3>
+                        
+                        {segment.imageSearchKeywords && segment.imageSearchKeywords.length > 0 && (
+                            <div className="mb-6 flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mr-2">Image Search Keywords:</span>
+                                {segment.imageSearchKeywords.map((keyword, k) => (
+                                    <span key={k} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-medium text-slate-600 dark:text-slate-300 select-all font-mono hover:bg-slate-200 dark:hover:bg-slate-700 cursor-copy" title="Click to copy">
+                                        #{keyword}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {visibleGroups.map((group, groupIndex) => (
-                                <Card key={groupIndex} className="flex flex-col h-full border border-slate-200 dark:border-slate-700 shadow-sm">
+                            {visibleGroups.map((group) => {
+                                // Find the real index of the group in the original array to ensure state updates target the correct item
+                                const realIndex = segment.creativeGroups!.indexOf(group);
+                                
+                                return (
+                                <Card key={realIndex} className="flex flex-col h-full border border-slate-200 dark:border-slate-700 shadow-sm">
                                     <div className="border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
                                         <div className="flex justify-between items-center">
                                             <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{group.name}</h4>
@@ -156,12 +181,12 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                         <p className="text-xs text-slate-500 mt-1">Channels: {group.channels.join(', ')}</p>
                                     </div>
 
-                                    <div className="space-y-4 flex-grow">
+                                    <div className="space-y-6 flex-grow">
                                         <div>
-                                            <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">Image Concept</label>
+                                            <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Image Concept</label>
                                             <div className="space-y-2">
                                                 {group.imagePrompts.map((prompt, i) => (
-                                                    <div key={i} onClick={() => handleOptionChange(segmentIndex, groupIndex, 'prompt', i)}
+                                                    <div key={i} onClick={() => handleOptionChange(segmentIndex, realIndex, 'prompt', i)}
                                                         className={`p-3 rounded border cursor-pointer text-sm transition-colors ${group.selectedPromptIndex === i ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20' : 'bg-slate-50 border-slate-200 hover:border-indigo-200'}`}>
                                                         <div className="flex items-start">
                                                             <div className={`mt-0.5 w-3 h-3 rounded-full border flex-shrink-0 mr-2 ${group.selectedPromptIndex === i ? 'bg-indigo-600 border-indigo-600' : 'border-slate-400'}`}></div>
@@ -171,11 +196,12 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                                 ))}
                                             </div>
                                         </div>
+                                        
                                         <div>
-                                            <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">Headline / Copy</label>
+                                            <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Headline / Copy</label>
                                             <div className="space-y-2">
                                                 {group.headlines.map((text, i) => (
-                                                    <div key={i} onClick={() => handleOptionChange(segmentIndex, groupIndex, 'headline', i)}
+                                                    <div key={i} onClick={() => handleOptionChange(segmentIndex, realIndex, 'headline', i)}
                                                         className={`p-3 rounded border cursor-pointer text-sm transition-colors ${group.selectedHeadlineIndex === i ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20' : 'bg-slate-50 border-slate-200 hover:border-indigo-200'}`}>
                                                         <div className="flex items-start">
                                                             <div className={`mt-0.5 w-3 h-3 rounded-full border flex-shrink-0 mr-2 ${group.selectedHeadlineIndex === i ? 'bg-indigo-600 border-indigo-600' : 'border-slate-400'}`}></div>
@@ -185,6 +211,26 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                                 ))}
                                             </div>
                                         </div>
+                                        
+                                        {group.pushNotes && group.pushNotes.length > 0 && (
+                                            <div>
+                                                <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Push Notes (Owned Media)</label>
+                                                <div className="space-y-2">
+                                                    {group.pushNotes.map((note, i) => (
+                                                        <div key={i} className="p-3 rounded border bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700">
+                                                            <div className="flex items-start gap-2">
+                                                                <div className="mt-1">
+                                                                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                                    </svg>
+                                                                </div>
+                                                                <p className="text-sm text-slate-700 dark:text-slate-300">{note}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
@@ -195,24 +241,29 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                             </div>
                                         ) : group.generatedCreative?.imageUrl ? (
                                             <div className="relative group">
-                                                <div className={`mx-auto bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center ${group.aspectRatio === '9:16' ? 'aspect-[9/16] max-w-[200px]' : 'aspect-square'}`}>
-                                                    <img src={group.generatedCreative.imageUrl} alt="Generated" className="w-full h-full object-cover" />
+                                                <div className={`mx-auto bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center ${getAspectRatioClass(group.aspectRatio)}`}>
+                                                    <img 
+                                                        src={group.generatedCreative.imageUrl} 
+                                                        alt="Generated" 
+                                                        className="w-full h-full object-contain" 
+                                                    />
                                                 </div>
-                                                <button onClick={() => setEditingCreative({ segmentIndex, groupIndex, creative: group.generatedCreative! })} className="absolute top-2 right-2 p-2 bg-white rounded shadow hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => setEditingCreative({ segmentIndex, groupIndex: realIndex, creative: group.generatedCreative! })} className="absolute top-2 right-2 p-2 bg-white rounded shadow hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <PencilIcon className="h-4 w-4 text-slate-700" />
                                                 </button>
                                                 <div className="mt-2 text-center">
-                                                    <Button variant="ghost" onClick={() => setRegenState({ segmentIndex, groupIndex })}>Regenerate</Button>
+                                                    <Button variant="ghost" onClick={() => setRegenState({ segmentIndex, groupIndex: realIndex })}>Regenerate</Button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <Button onClick={() => handleGenerateImage(segmentIndex, groupIndex)} className="w-full">
+                                            <Button onClick={() => handleGenerateImage(segmentIndex, realIndex)} className="w-full">
                                                 <SparklesIcon className="w-4 h-4 mr-2" /> Generate Creative
                                             </Button>
                                         )}
                                     </div>
                                 </Card>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 );
@@ -224,37 +275,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
         <ImageEditorModal creative={editingCreative.creative} onClose={() => setEditingCreative(null)} 
             onSave={(newCreative) => {
                 const newSegments = [...campaign.audienceSegments];
-                // Need to find the correct index in the actual segments array, as visibleGroups is filtered
-                // Since group objects are by reference inside segments, we can iterate to find it, 
-                // but simplistic approach is using indices which matches the render loop provided the filtering is consistent.
-                // Actually, we used map index from visibleGroups. This is risky if we don't map back to original index.
-                // Correction: We need to find the group in the main segment array.
                 const segment = newSegments[editingCreative.segmentIndex];
-                const groupToUpdate = segment.creativeGroups![editingCreative.groupIndex];
-                // BUT WAIT: editingCreative.groupIndex passed from render loop is index in `visibleGroups`, NOT `segment.creativeGroups`.
-                // I need to fix the index passing in the main render loop.
-                // Actually, let's find the group by name or reference to be safe, but for now I will rely on finding the object.
-                
-                // FIX: In the render loop below, I should iterate the full group list but hide valid ones.
-                // OR, better: pass the object reference to the modal logic or map visible index to real index.
-                // Given the complexity, I'll assume the groups in 'visibleGroups' are references to the objects in state.
-                // But I need to update state.
-                
-                // Let's just match by ID/Content or just iterate.
-                const realGroupIndex = segment.creativeGroups!.findIndex(g => g.name === segment.creativeGroups![editingCreative.groupIndex].name); 
-                // The above is wrong because editingCreative.groupIndex comes from visibleGroups map.
-                // Let's just fix the state update logic to use the group object directly if possible, or better:
-                // When mapping visibleGroups, I don't have the original index easily without searching.
-                // Let's change the key/handler to use the group object identity? No, state is immutable.
-                
-                // Alternative: We know the group NAME is unique per segment usually.
-                // Let's rely on the fact that I can't easily change the `handleGenerateImage` signature in the XML block without rewriting the whole file logic.
-                // Actually, I CAN.
-                
-                // RE-WRITE STRATEGY for State Update in Modal:
-                // I will iterate the segment's groups, find the one that matches the editingCreative.creative.id/prompt
-                // It is safer to just update the specific creative object in the array.
-                
                 if (segment.creativeGroups) {
                      const group = segment.creativeGroups.find(g => g.generatedCreative === editingCreative.creative);
                      if (group) {
@@ -270,20 +291,6 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       {regenState && (
           <RegenerateModal title="Regenerate Creative" onClose={() => setRegenState(null)} isLoading={false} 
             onGenerate={(instructions) => {
-                // We need to map visible index to real index for the handleGenerateImage call
-                // This is tricky. `handleGenerateImage` expects an index into `segment.creativeGroups`.
-                // But `regenState.groupIndex` comes from `visibleGroups.map`.
-                
-                // To fix this without huge refactor:
-                // In the render loop, I should calculate the real index.
-                
-                // I will modify the render loop to:
-                // segment.creativeGroups.map((group, realIndex) => {
-                //    if (!isVisible(group)) return null;
-                //    return ( ... onClick={() => setRegenState({ segmentIndex, groupIndex: realIndex })} ... )
-                // })
-                // This handles the index correctly.
-                
                 handleGenerateImage(regenState.segmentIndex, regenState.groupIndex, instructions);
                 setRegenState(null);
             }} 
