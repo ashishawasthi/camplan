@@ -224,13 +224,14 @@ export const generateImage = async (prompt: string, aspectRatio: '1:1' | '9:16' 
 
   try {
       // Using gemini-3-pro-image-preview for high quality image generation
+      // Upgraded to 4K resolution
       const response = await runGenerateContent({
           model: 'gemini-3-pro-image-preview',
           contents: { parts: [{ text: fullPrompt }] },
           config: {
               imageConfig: {
                   aspectRatio: aspectRatio,
-                  imageSize: '1K'
+                  imageSize: '4K'
               }
           },
       });
@@ -252,6 +253,7 @@ export const generateImageFromProduct = async (
   productImage: SupportingDocument, 
   prompt: string,
   instructions?: string,
+  aspectRatio: '1:1' | '9:16' | '16:9' = '1:1'
 ): Promise<{ base64: string; mimeType: string }> => {
   // Using gemini-3-pro-image-preview for product editing/placement
   let fullPrompt = `Using the provided product image, create a new photorealistic image: "${prompt}". Maintain realistic scale. High quality, professional lighting.`;
@@ -266,8 +268,8 @@ export const generateImageFromProduct = async (
       contents: { parts: [imagePart, textPart] },
       config: { 
           imageConfig: {
-              aspectRatio: '1:1', // Default square for product shots
-              imageSize: '1K'
+              aspectRatio: aspectRatio, 
+              imageSize: '4K'
           }
       },
     });
@@ -312,7 +314,7 @@ export const editImage = async (originalBase64: string, mimeType: string, instru
             config: {
                 imageConfig: {
                     aspectRatio: aspectRatio,
-                    imageSize: '1K'
+                    imageSize: '4K'
                 }
             }
         });

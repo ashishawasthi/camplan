@@ -29,8 +29,14 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       if (needsGeneration && !isAnalyzing) {
         setIsAnalyzing(true);
         try {
-          const updatedSegments = await Promise.all(campaign.audienceSegments.map(async (segment) => {
-             if (segment.creativeGroups && segment.creativeGroups.length > 0) return segment;
+          // Process segments sequentially to avoid hitting API rate limits (429 errors)
+          const updatedSegments = [...campaign.audienceSegments];
+          
+          for (let i = 0; i < updatedSegments.length; i++) {
+             const segment = updatedSegments[i];
+             
+             // Skip if already generated
+             if (segment.creativeGroups && segment.creativeGroups.length > 0) continue;
 
              // Determine active channels from Media Plan
              const activeChannels = segment.mediaSplit?.filter(m => m.budget > 0).map(m => m.channel) || [];
@@ -39,22 +45,27 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                  activeChannels.push(...campaign.ownedMediaAnalysis.recommendedChannels);
              }
 
-             if (activeChannels.length === 0) return segment; // No channels, no strategy
+             if (activeChannels.length === 0) continue; // No channels, no strategy
 
+             // Generate strategy for this segment
              const groups = await generateCreativeStrategy(
                  segment, 
                  activeChannels, 
-                 `Product: ${campaign.campaignName}. Values: ${campaign.brandValues || 'N/A'}.`
+                 `Product: ${campaign.campaignName}. Values: ${campaign.brandValues || 'N/A'}. Target Country: ${campaign.country}.`
              );
              
              // Initialize selection state
              const initializedGroups = groups.map(g => ({ ...g, selectedPromptIndex: 0, selectedHeadlineIndex: 0 }));
-             return { ...segment, creativeGroups: initializedGroups };
-          }));
+             updatedSegments[i] = { ...segment, creativeGroups: initializedGroups };
+             
+             // Optional: Update state progressively so user sees progress
+             // setCampaign({ ...campaign, audienceSegments: [...updatedSegments] });
+          }
           
           setCampaign({ ...campaign, audienceSegments: updatedSegments });
         } catch (e) {
-            setError("Failed to generate content strategy. Please try again.");
+            console.error(e);
+            setError("Failed to generate content strategy. Please try again or check your API quota.");
         } finally {
             setIsAnalyzing(false);
         }
@@ -84,9 +95,17 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       const prompt = group.imagePrompts[group.selectedPromptIndex || 0];
       const aspectRatio = group.aspectRatio as '1:1' | '9:16' | '16:9';
 
+      // Inject audience and country context for better representation
+      const audienceContext = `Target Audience: ${segment.name}. ${segment.penPortrait || segment.description}.`;
+      const countryContext = `Location: ${campaign.country}. The image must be culturally and visually appropriate for ${campaign.country}.`;
+      
+      const finalInstructions = instructions 
+        ? `${instructions}. ${audienceContext} ${countryContext}`
+        : `${audienceContext} ${countryContext} Ensure the image represents this specific target audience in this location.`;
+
       const result = campaign.productImage 
-        ? await generateImageFromProduct(campaign.productImage, prompt, instructions)
-        : await generateImage(prompt, aspectRatio, instructions);
+        ? await generateImageFromProduct(campaign.productImage, prompt, finalInstructions, aspectRatio)
+        : await generateImage(prompt, aspectRatio, finalInstructions);
         
       group.generatedCreative = {
         id: new Date().toISOString(),
@@ -114,10 +133,10 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
 
   const getAspectRatioClass = (ratio: string) => {
       switch (ratio) {
-          case '9:16': return 'aspect-[9/16] max-w-[240px]';
+          case '9:16': return 'aspect-[9/16] w-full';
           case '16:9': return 'aspect-[16/9] w-full';
           case '1:1':
-          default: return 'aspect-square';
+          default: return 'aspect-square w-full';
       }
   };
 
@@ -172,7 +191,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                 const realIndex = segment.creativeGroups!.indexOf(group);
                                 
                                 return (
-                                <Card key={realIndex} className="flex flex-col h-full border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <Card key={realIndex} className="flex flex-col border border-slate-200 dark:border-slate-700 shadow-sm h-full">
                                     <div className="border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
                                         <div className="flex justify-between items-center">
                                             <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{group.name}</h4>
@@ -181,7 +200,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                         <p className="text-xs text-slate-500 mt-1">Channels: {group.channels.join(', ')}</p>
                                     </div>
 
-                                    <div className="space-y-6 flex-grow">
+                                    <div className="space-y-6 mb-6">
                                         <div>
                                             <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">Image Concept</label>
                                             <div className="space-y-2">
@@ -234,15 +253,15 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                     </div>
 
                                     {group.generatedCreative?.isGenerating || group.generatedCreative?.imageUrl ? (
-                                        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                        <div className="mt-4 pt-2 border-t border-slate-100 dark:border-slate-700 flex-grow flex flex-col justify-end">
                                             {group.generatedCreative?.isGenerating ? (
                                                 <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-indigo-100">
                                                     <SparklesIcon className="h-8 w-8 text-indigo-500 animate-pulse mx-auto mb-2" />
-                                                    <p className="text-sm text-slate-500">Generating high-quality creative...</p>
+                                                    <p className="text-sm text-slate-500">Generating preview...</p>
                                                 </div>
                                             ) : (
-                                                <div className="relative group">
-                                                    <div className={`mx-auto bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center ${getAspectRatioClass(group.aspectRatio)}`}>
+                                                <div className="relative group w-full">
+                                                    <div className={`w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center ${getAspectRatioClass(group.aspectRatio)}`}>
                                                         <img 
                                                             src={group.generatedCreative?.imageUrl} 
                                                             alt="Generated" 
@@ -262,10 +281,11 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                         <div className="flex justify-end mt-2">
                                             <button 
                                                 onClick={() => handleGenerateImage(segmentIndex, realIndex)} 
-                                                className="h-8 w-8 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-400 hover:text-indigo-600 flex items-center justify-center transition-colors"
-                                                title="Generate Preview (Optional)"
+                                                className="p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                                title="Generate Preview"
+                                                aria-label="Generate Preview"
                                             >
-                                                <SparklesIcon className="h-4 w-4" />
+                                                <SparklesIcon className="h-5 w-5" />
                                             </button>
                                         </div>
                                     )}
@@ -280,7 +300,11 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       )}
       
       {editingCreative && (
-        <ImageEditorModal creative={editingCreative.creative} aspectRatio={editingCreative.aspectRatio} onClose={() => setEditingCreative(null)} 
+        <ImageEditorModal 
+            creative={editingCreative.creative} 
+            aspectRatio={editingCreative.aspectRatio}
+            country={campaign.country}
+            onClose={() => setEditingCreative(null)} 
             onSave={(newCreative) => {
                 const newSegments = [...campaign.audienceSegments];
                 const segment = newSegments[editingCreative.segmentIndex];

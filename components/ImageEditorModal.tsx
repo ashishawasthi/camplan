@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Creative } from '../types';
 import Button from './common/Button';
@@ -7,12 +8,13 @@ import { SparklesIcon } from './icons/SparklesIcon';
 interface Props {
   creative: Creative;
   aspectRatio?: '1:1' | '9:16' | '16:9';
+  country?: string;
   onClose: () => void;
   onSave: (creative: Creative) => void;
   setError: (error: string | null) => void;
 }
 
-const ImageEditorModal: React.FC<Props> = ({ creative, aspectRatio = '1:1', onClose, onSave, setError }) => {
+const ImageEditorModal: React.FC<Props> = ({ creative, aspectRatio = '1:1', country, onClose, onSave, setError }) => {
   const [prompt, setPrompt] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null);
@@ -27,10 +29,16 @@ const ImageEditorModal: React.FC<Props> = ({ creative, aspectRatio = '1:1', onCl
     setEditedImageUrl(null);
     try {
       const base64Data = originalImageUrl.split(',')[1];
+      
+      // Append country context to the prompt if available
+      const editInstructions = country 
+        ? `${prompt}. Ensure the image remains culturally appropriate for ${country}.` 
+        : prompt;
+
       const { base64, mimeType } = await editImage(
         base64Data, 
         creative.mimeType, 
-        prompt, 
+        editInstructions, 
         aspectRatio as '1:1' | '9:16' | '16:9'
       );
       setEditedImageUrl(`data:${mimeType};base64,${base64}`);
@@ -53,7 +61,7 @@ const ImageEditorModal: React.FC<Props> = ({ creative, aspectRatio = '1:1', onCl
   };
 
   const getAspectClass = (ratio: string) => {
-    if (ratio === '9:16') return 'aspect-[9/16] max-h-[400px]';
+    if (ratio === '9:16') return 'aspect-[9/16] w-full';
     if (ratio === '16:9') return 'aspect-[16/9] w-full';
     return 'aspect-square';
   }
