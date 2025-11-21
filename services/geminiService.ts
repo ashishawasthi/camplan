@@ -179,11 +179,12 @@ export const generateCreativeStrategy = async (
         2. The Aspect Ratio. You MUST select one of the following exactly: "1:1", "9:16", or "16:9".
         3. The channels belonging to this group.
         4. 3 distinct, highly descriptive Image Prompts suitable for generating a high-quality ad image in that format.
-           - IMPORTANT: If the ad concept does not strictly require showing the physical product (e.g. a specific credit card design), describe a LIFESTYLE scene, human emotion, or atmospheric setting instead. Avoid describing generic "credit cards" or "bank apps" in the prompt unless essential, as these often look fake. Focus on the benefit, the feeling, or the outcome.
-           - If product imagery is NOT required to convey the message, do NOT include it in the prompt.
-           - Ensure the prompt describes the composition to fit the aspect ratio (e.g. "vertical shot" for 9:16).
-           - Include specific details about the subject, lighting (e.g., "soft daylight", "cinematic neon"), mood (e.g., "energetic", "trustworthy"), and style (e.g., "candid lifestyle", "studio editorial").
-           - Do NOT use real brand names.
+           - **Visual Description**: Write a detailed, natural language description of the scene. Describe the lighting, the environment, the camera angle, and the action.
+           - **Target Audience**: The people in the image MUST represent the target audience segment and be ethnically and culturally appropriate for the campaign's country.
+           - **No Text/Screens**: Avoid describing text, specific app screens, or complex UI elements. If a phone is shown, keep the screen blank or out of focus.
+           - **No Branding**: Do NOT include logos or brand names in the description.
+           - **Minimal Product**: Show the product (card/app) SPARINGLY. Only include it if strictly required for the concept. Prioritize lifestyle, emotion, and atmosphere over product placement.
+           - **Composition**: Ensure the description fits the aspect ratio (e.g. "vertical shot" for 9:16).
         5. 3 distinct Headlines or Notification Texts (short, punchy copy) suitable for these channels.
         6. 3 distinct Push Notification texts (short, engaging, action-oriented) suitable for mobile app notifications or SMS owned media channels (as 'pushNotes').
 

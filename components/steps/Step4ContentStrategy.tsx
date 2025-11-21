@@ -4,6 +4,7 @@ import { Campaign, Creative, CreativeGroup } from '../../types';
 import { generateImage, generateImageFromProduct, generateCreativeStrategy } from '../../services/geminiService';
 import Button from '../common/Button';
 import Card from '../common/Card';
+import Loader from '../common/Loader';
 import ImageEditorModal from '../ImageEditorModal';
 import { SparklesIcon } from '../icons/SparklesIcon';
 import { PencilIcon } from '../icons/PencilIcon';
@@ -98,10 +99,11 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       // Inject audience and country context for better representation
       const audienceContext = `Target Audience: ${segment.name}. ${segment.penPortrait || segment.description}.`;
       const countryContext = `Location: ${campaign.country}. The image must be culturally and visually appropriate for ${campaign.country}.`;
+      const constraints = `Do not generate text, logos, or screen UI. Show the product only if strictly necessary; otherwise focus on the people and mood.`;
       
       const finalInstructions = instructions 
-        ? `${instructions}. ${audienceContext} ${countryContext}`
-        : `${audienceContext} ${countryContext} Ensure the image represents this specific target audience in this location.`;
+        ? `${instructions}. ${audienceContext} ${countryContext} ${constraints}`
+        : `${audienceContext} ${countryContext} ${constraints}`;
 
       const result = campaign.productImage 
         ? await generateImageFromProduct(campaign.productImage, prompt, finalInstructions, aspectRatio)
@@ -148,10 +150,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
       </div>
 
       {isAnalyzing ? (
-          <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-              <p className="text-slate-600">Developing creative strategy based on your media plan...</p>
-          </div>
+          <Loader text="Developing creative strategy based on your media plan..." />
       ) : (
         <div className="space-y-12">
             {campaign.audienceSegments.map((segment, segmentIndex) => {
