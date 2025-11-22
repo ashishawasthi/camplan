@@ -83,6 +83,7 @@ export interface Campaign {
   segmentSources?: GroundingSource[];
   productImage?: SupportingDocument;
   productDetailsUrl?: string;
+  productDetailsDocument?: SupportingDocument;
   importantCustomers?: string;
   customerSegment?: string;
   whatToTell?: string;

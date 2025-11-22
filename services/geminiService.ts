@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Modality } from '@google/genai';
 import { AudienceSegment, SupportingDocument, GroundingSource, CompetitorAnalysis, OwnedMediaAnalysis, CreativeGroup } from '../types';
 import { runGenerateContent } from './geminiClient';
@@ -20,6 +21,7 @@ export const getAudienceSegments = async (
   country: string,
   landingPageUrl: string,
   productDetailsUrl?: string,
+  productDetailsDocument?: SupportingDocument,
   importantCustomers?: string,
   customerSegment?: string,
   whatToTell?: string,
@@ -31,26 +33,29 @@ export const getAudienceSegments = async (
   productImage?: SupportingDocument,
   instructions?: string,
 ): Promise<{ segments: AudienceSegment[], sources: GroundingSource[], competitorAnalysis?: CompetitorAnalysis, proposition?: string }> => {
+  
+  // Construct the prompt regarding product details source
+  let productSourceText = "";
+  if (productDetailsUrl) productSourceText += `URL: ${productDetailsUrl}. `;
+  if (productDetailsDocument) productSourceText += `Document: ${productDetailsDocument.name}. `;
+  if (!productDetailsUrl && !productDetailsDocument) productSourceText += `Landing Page: ${landingPageUrl}. `;
+
   let prompt = `
     As a marketing expert for a consumer bank in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a paid media budget of $${paidMediaBudget} and will run for ${durationDays} days.
-  `;
 
-  if (productDetailsUrl) {
-      prompt += `
-      First, analyze the provided product details page for our product: ${productDetailsUrl}.
-      Second, use Google Search to identify 2-3 key competitors for this product in ${country}.
-      Third, create a DETAILED competitor comparison table. For your product (labeled with brand 'Our Bank') and each competitor, include:
-        - Product Name
-        - Brand
-        - Key Features (as a list of strings)
-        - Target Audience (who is this for?)
-        - 'prosVsCons': A detailed string text comparing it to our product (Our Pros vs Their Cons).
-      Fourth, provide a brief summary of your findings from this competitive analysis, highlighting our product's key differentiators or weaknesses.
-      `;
-  }
+    First, analyze the provided product details source: ${productSourceText}.
+    If a document is provided, use its content. If a URL is provided, use its content. If neither is provided, rely on the Landing Page content for product details.
 
-  prompt += `
+    Second, use Google Search to identify 2-3 key competitors for this product in ${country}.
+    Third, create a DETAILED competitor comparison table. For your product (labeled with brand 'Our Bank') and each competitor, include:
+      - Product Name
+      - Brand
+      - Key Features (as a list of strings)
+      - Target Audience (who is this for?)
+      - 'prosVsCons': A detailed string text comparing it to our product (Our Pros vs Their Cons).
+    Fourth, provide a brief summary of your findings from this competitive analysis, highlighting our product's key differentiators or weaknesses.
+
     Next, use Google Search to research the current market for this type of product/service in ${country}. Look for consumer trends, competitor strategies, and relevant demographic/psychographic data.
     Then, analyze the content of the campaign's landing page, which contains the core offer and details: ${landingPageUrl}.
     After that, provide a "Proposition" section. This should be a concise summary of your key findings from the web search and the product/landing page content. It should discuss why customers should choose our product or service, focusing on the unique benefits and value it delivers.
@@ -83,6 +88,7 @@ export const getAudienceSegments = async (
   const contextInstructions: string[] = [];
   if (productImage) contextInstructions.push("a product image");
   if (supportingDocuments && supportingDocuments.length > 0) contextInstructions.push("the attached document(s)");
+  if (productDetailsDocument) contextInstructions.push("the attached product details document");
 
   if (contextInstructions.length > 0) {
     prompt += `\n\nUse the content of ${contextInstructions.join(' and ')} as context.`;
@@ -93,15 +99,11 @@ export const getAudienceSegments = async (
   }
   
   prompt += `\n\nYour final output MUST be a single, valid JSON object. No markdown formatting. Structure:
-{`;
-  if (productDetailsUrl) {
-      prompt += `
+{
   "competitorAnalysis": {
     "summary": "string",
     "comparisonTable": [{ "productName": "string", "brand": "string", "keyFeatures": ["string"], "targetAudience": "string", "prosVsCons": "string" }]
-  },`;
-  }
-  prompt += `
+  },
   "proposition": "string",
   "segments": [
     {
@@ -117,6 +119,9 @@ export const getAudienceSegments = async (
 
   const parts: Part[] = [{ text: prompt }];
   if (productImage) parts.push({ inlineData: { mimeType: productImage.mimeType, data: productImage.data } });
+  if (productDetailsDocument) {
+      parts.push({ inlineData: { mimeType: productDetailsDocument.mimeType, data: productDetailsDocument.data } });
+  }
   if (supportingDocuments) {
     for (const doc of supportingDocuments) {
       parts.push({ inlineData: { mimeType: doc.mimeType, data: doc.data } });

@@ -62,6 +62,7 @@ const Step2TargetAudience: React.FC<Props> = ({ campaign, setCampaign, onNext, e
         campaign.country,
         campaign.landingPageUrl,
         campaign.productDetailsUrl,
+        campaign.productDetailsDocument,
         campaign.importantCustomers,
         campaign.customerSegment,
         campaign.whatToTell,

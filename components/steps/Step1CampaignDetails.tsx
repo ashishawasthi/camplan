@@ -14,6 +14,7 @@ type CampaignDetails = Omit<Campaign, 'audienceSegments'>;
 const COUNTRIES = ['Singapore', 'Hong Kong', 'India', 'Indonesia', 'Taiwan'];
 const SUPPORTED_FILE_TYPES = "image/jpeg,image/png,image/webp,application/pdf,text/plain,.txt";
 const SUPPORTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp";
+const SUPPORTED_DOC_TYPES = "application/pdf,text/plain,.txt";
 
 
 const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
@@ -48,10 +49,12 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
   const [customerJob, setCustomerJob] = useState('');
   const [brandValues, setBrandValues] = useState('');
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [productDetailsDocFile, setProductDetailsDocFile] = useState<File | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const productImageInputRef = useRef<HTMLInputElement>(null);
+  const productDetailsDocInputRef = useRef<HTMLInputElement>(null);
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,11 +72,17 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
       setProductImageFile(event.target.files[0]);
     }
   };
+
+  const handleProductDetailsDocChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setProductDetailsDocFile(event.target.files[0]);
+    }
+  };
   
-  const removeProductImage = () => {
-    setProductImageFile(null);
-    if (productImageInputRef.current) {
-      productImageInputRef.current.value = "";
+  const removeProductDetailsDoc = () => {
+    setProductDetailsDocFile(null);
+    if (productDetailsDocInputRef.current) {
+      productDetailsDocInputRef.current.value = "";
     }
   };
 
@@ -108,6 +117,15 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
           };
         }
 
+        let productDetailsDocument: SupportingDocument | undefined = undefined;
+        if (productDetailsDocFile) {
+          productDetailsDocument = {
+            name: productDetailsDocFile.name,
+            mimeType: productDetailsDocFile.type,
+            data: await fileToBase64(productDetailsDocFile),
+          };
+        }
+
         const campaignDetails: CampaignDetails = {
           campaignName,
           country,
@@ -117,6 +135,7 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
           paidMediaBudget: parseFloat(paidMediaBudget),
           productImage,
           productDetailsUrl: productDetailsUrl || undefined,
+          productDetailsDocument,
           importantCustomers: importantCustomers || undefined,
           customerSegment: customerSegment || undefined,
           whatToTell: whatToTell || undefined,
@@ -137,21 +156,6 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
         setIsProcessing(false);
       }
     }
-  };
-
-  const renderSummaryValue = (value?: string | string[] | number | SupportingDocument | SupportingDocument[]) => {
-      if (!value) return <span className="text-slate-400 italic">Not provided</span>;
-      if (typeof value === 'string' || typeof value === 'number') return value;
-      if (Array.isArray(value)) {
-          if (value.length === 0) return <span className="text-slate-400 italic">None</span>;
-          return (
-              <ul className="list-disc list-inside">
-                  {value.map((item: any, index: number) => <li key={index}>{item.name || item}</li>)}
-              </ul>
-          );
-      }
-      if (typeof value === 'object' && 'name' in value) return value.name;
-      return <span className="text-slate-400 italic">Invalid data</span>;
   };
 
   if (isSubmitted && submittedData) {
@@ -175,6 +179,9 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
             
             {submittedData.productDetailsUrl && (
               <div className="md:col-span-2"><strong className="font-medium text-slate-500 dark:text-slate-400">Product Details URL:</strong> <a href={submittedData.productDetailsUrl} className="text-indigo-600 dark:text-indigo-400 hover:underline break-all">{submittedData.productDetailsUrl}</a></div>
+            )}
+            {submittedData.productDetailsDocument && (
+              <div className="md:col-span-2"><strong className="font-medium text-slate-500 dark:text-slate-400">Product Details Doc:</strong> <span className="text-slate-800 dark:text-slate-200">{submittedData.productDetailsDocument.name}</span></div>
             )}
             
             {hasCreativeBrief && (
@@ -252,10 +259,25 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
 
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
                    <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Assets (Optional)</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Details URL</label>
-                    <input type="url" value={productDetailsUrl} onChange={(e) => setProductDetailsUrl(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" />
-                  </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Details URL</label>
+                        <input type="url" value={productDetailsUrl} onChange={(e) => setProductDetailsUrl(e.target.value)} placeholder="https://..." className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Details Document (PDF/TXT)</label>
+                          <div className="mt-1 flex items-center gap-2">
+                             <input ref={productDetailsDocInputRef} type="file" onChange={handleProductDetailsDocChange} accept={SUPPORTED_DOC_TYPES} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                             {productDetailsDocFile && (
+                                <button type="button" onClick={removeProductDetailsDoc} className="text-red-500 hover:text-red-700" title="Remove file">
+                                   &times;
+                                </button>
+                             )}
+                          </div>
+                      </div>
+                   </div>
+                   <p className="text-xs text-slate-500 italic">Provide either a URL or a document for product details to generate competitor insights. If neither is provided, the landing page will be used.</p>
+                   
                    <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Image</label>
                       <input ref={productImageInputRef} type="file" onChange={handleProductImageChange} accept={SUPPORTED_IMAGE_TYPES} className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
