@@ -19,7 +19,7 @@ export const getAudienceSegments = async (
   paidMediaBudget: number,
   durationDays: number,
   country: string,
-  landingPageUrl: string,
+  landingPageUrl?: string,
   productDetailsUrl?: string,
   productDetailsDocument?: SupportingDocument,
   importantCustomers?: string,
@@ -38,17 +38,16 @@ export const getAudienceSegments = async (
   let productSourceText = "";
   if (productDetailsUrl) productSourceText += `URL: ${productDetailsUrl}. `;
   if (productDetailsDocument) productSourceText += `Document: ${productDetailsDocument.name}. `;
-  if (!productDetailsUrl && !productDetailsDocument) productSourceText += `Landing Page: ${landingPageUrl}. `;
+  if (landingPageUrl) productSourceText += `Landing Page: ${landingPageUrl}. `;
 
   let prompt = `
-    As a marketing expert for a consumer bank in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
+    As a marketing expert acting for a business in the industry relevant to the provided product details in ${country}, your task is to identify 3-5 distinct target audience segments for a new ad campaign titled "${campaignName}".
     The campaign has a paid media budget of $${paidMediaBudget} and will run for ${durationDays} days.
 
-    First, analyze the provided product details source: ${productSourceText}.
-    If a document is provided, use its content. If a URL is provided, use its content. If neither is provided, rely on the Landing Page content for product details.
-
+    First, analyze the provided product details source: ${productSourceText}. Infer the specific industry and product category from this content.
+    
     Second, use Google Search to identify 2-3 key competitors for this product in ${country}.
-    Third, create a DETAILED competitor comparison table. For your product (labeled with brand 'Our Bank') and each competitor, include:
+    Third, create a DETAILED competitor comparison table. For your product (labeled with brand 'Our Brand') and each competitor, include:
       - Product Name
       - Brand
       - Key Features (as a list of strings)
@@ -57,15 +56,15 @@ export const getAudienceSegments = async (
     Fourth, provide a brief summary of your findings from this competitive analysis, highlighting our product's key differentiators or weaknesses.
 
     Next, use Google Search to research the current market for this type of product/service in ${country}. Look for consumer trends, competitor strategies, and relevant demographic/psychographic data.
-    Then, analyze the content of the campaign's landing page, which contains the core offer and details: ${landingPageUrl}.
-    After that, provide a "Proposition" section. This should be a concise summary of your key findings from the web search and the product/landing page content. It should discuss why customers should choose our product or service, focusing on the unique benefits and value it delivers.
+    Then, analyze the content of the provided product sources and landing page (if available) to understand the core offer and details.
+    After that, provide a "Proposition" section. This should be a concise summary of your key findings from the web search and the product content. It should discuss why customers should choose our product or service, focusing on the unique benefits and value it delivers.
     
     Finally, based on ALL your analysis, define each audience segment with the following properties:
     1. A short, descriptive name.
     2. A "Pen Portrait": A short, narrative description of a fictional individual who represents this segment. Give them a name, age, occupation, and briefly describe a day in their life.
     3. A detailed description of the segment's demographics, lifestyle, and psychographics.
     4. A "rationale" explaining your reasoning, referencing specific insights.
-    5. A list of their key motivations for banking products.
+    5. A list of their key motivations for products in this category.
     6. A list of 5-7 concise keywords for searching an existing internal ad image repository (as 'imageSearchKeywords').
     
     Note: We will generate specific creative prompts in a later step, so focus here on the deep understanding of the audience.
@@ -292,8 +291,9 @@ export const generateImageFromProduct = async (
   }
 };
 
-export const generateNotificationText = async (prompt: string, landingPageUrl: string, brandValues?: string, instructions?: string): Promise<string> => {
-    let fullPrompt = `Generate a concise marketing copy/headline based on: "${prompt}". Link: ${landingPageUrl}.`;
+export const generateNotificationText = async (prompt: string, landingPageUrl?: string, brandValues?: string, instructions?: string): Promise<string> => {
+    let fullPrompt = `Generate a concise marketing copy/headline based on: "${prompt}".`;
+    if (landingPageUrl) fullPrompt += ` Link: ${landingPageUrl}.`;
     if (brandValues) fullPrompt += `\nValues: ${brandValues}`;
     if (instructions) fullPrompt += `\nInstruction: "${instructions}"`;
     fullPrompt += "\nReturn only the text.";
@@ -337,8 +337,10 @@ export const editImage = async (originalBase64: string, mimeType: string, instru
     }
 }
 
-export const editNotificationText = async (originalText: string, instructions: string, landingPageUrl: string, brandValues?: string): Promise<string> => {
-    let prompt = `Rewrite the following marketing copy: "${originalText}".\nInstructions: ${instructions}.\nKeep it concise.`;
+export const editNotificationText = async (originalText: string, instructions: string, landingPageUrl?: string, brandValues?: string): Promise<string> => {
+    let prompt = `Rewrite the following marketing copy: "${originalText}".\nInstructions: ${instructions}.`;
+    if (landingPageUrl) prompt += `\nContext Link: ${landingPageUrl}.`;
+    prompt += `\nKeep it concise.`;
     
     try {
       const response = await runGenerateContent({ model: 'gemini-2.5-flash', contents: prompt });
@@ -354,21 +356,20 @@ export const getBudgetSplit = async (
     totalBudget: number,
     country: string,
     campaignName: string,
-    landingPageUrl: string,
+    landingPageUrl?: string,
     customerAction?: string,
     productBenefits?: string,
     instructions?: string
 ): Promise<{ analysis: string; splits: { segmentName: string; allocatedBudget: number; mediaSplit: { channel: string; budget: number }[] }[], sources: GroundingSource[] }> => {
     
     const segmentSummaries = segments.map(s => `- ${s.name}: ${s.description} (Rationale: ${s.rationale})`).join('\n');
-
+    
     let prompt = `
-        Act as a Media Planner for a consumer bank in ${country}.
-        Campaign: "${campaignName}".
+        Act as a Media Planner for the industry relevant to the campaign "${campaignName}" in ${country}.
         Total Budget: $${totalBudget}.
         Objective: ${customerAction || 'Acquisition'}.
         Product Benefits: ${productBenefits || 'N/A'}.
-        Landing Page: ${landingPageUrl}.
+        ${landingPageUrl ? `Landing Page: ${landingPageUrl}.` : ''}
 
         Target Audience Segments:
         ${segmentSummaries}

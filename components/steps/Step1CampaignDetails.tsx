@@ -52,6 +52,7 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
   const [productDetailsDocFile, setProductDetailsDocFile] = useState<File | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const productImageInputRef = useRef<HTMLInputElement>(null);
   const productDetailsDocInputRef = useRef<HTMLInputElement>(null);
@@ -97,7 +98,15 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (campaignName && country && startDate && endDate && paidMediaBudget && landingPageUrl) {
+    setError(null);
+
+    const hasProductDetails = productDetailsUrl || productDetailsDocFile;
+    if (!hasProductDetails) {
+        setError("Please provide either a Product Details URL or a Product Details Document.");
+        return;
+    }
+
+    if (campaignName && country && startDate && endDate && paidMediaBudget) {
       setIsProcessing(true);
       try {
         const supportingDocuments: SupportingDocument[] = await Promise.all(
@@ -131,7 +140,7 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
           country,
           startDate,
           endDate,
-          landingPageUrl: landingPageUrl,
+          landingPageUrl: landingPageUrl || undefined,
           paidMediaBudget: parseFloat(paidMediaBudget),
           productImage,
           productDetailsUrl: productDetailsUrl || undefined,
@@ -152,9 +161,12 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
 
       } catch (error) {
         console.error("Error processing files:", error);
+        setError("An error occurred while processing your files. Please try again.");
       } finally {
         setIsProcessing(false);
       }
+    } else {
+        setError("Please fill in all mandatory fields.");
     }
   };
 
@@ -175,7 +187,10 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
             <div><strong className="font-medium text-slate-500 dark:text-slate-400">Country:</strong> <span className="text-slate-800 dark:text-slate-200">{submittedData.country}</span></div>
             <div><strong className="font-medium text-slate-500 dark:text-slate-400">Paid Media Budget:</strong> <span className="text-slate-800 dark:text-slate-200">${submittedData.paidMediaBudget.toLocaleString()}</span></div>
             <div><strong className="font-medium text-slate-500 dark:text-slate-400">Duration:</strong> <span className="text-slate-800 dark:text-slate-200">{submittedData.startDate} to {submittedData.endDate}</span></div>
-            <div className="md:col-span-2"><strong className="font-medium text-slate-500 dark:text-slate-400">Landing Page URL:</strong> <a href={submittedData.landingPageUrl} className="text-indigo-600 dark:text-indigo-400 hover:underline break-all">{submittedData.landingPageUrl}</a></div>
+            
+            {submittedData.landingPageUrl && (
+               <div className="md:col-span-2"><strong className="font-medium text-slate-500 dark:text-slate-400">Landing Page URL:</strong> <a href={submittedData.landingPageUrl} className="text-indigo-600 dark:text-indigo-400 hover:underline break-all">{submittedData.landingPageUrl}</a></div>
+            )}
             
             {submittedData.productDetailsUrl && (
               <div className="md:col-span-2"><strong className="font-medium text-slate-500 dark:text-slate-400">Product Details URL:</strong> <a href={submittedData.productDetailsUrl} className="text-indigo-600 dark:text-indigo-400 hover:underline break-all">{submittedData.productDetailsUrl}</a></div>
@@ -203,25 +218,27 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
       <div className="no-print">
         <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-200">Campaign Details</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Let's start by defining the basics of your new campaign.</p>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="campaignName" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Campaign Name</label>
-            <input type="text" id="campaignName" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" required />
-          </div>
+        
+        {error && (
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+        )}
 
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="campaignName" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Campaign Name</label>
+              <input type="text" id="campaignName" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" required />
+            </div>
             <div>
               <label htmlFor="country" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Country</label>
               <select id="country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" required>
                 {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
-            <div>
-              <label htmlFor="paidMediaBudget" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Paid Media Budget (S$)</label>
-              <input type="number" id="paidMediaBudget" value={paidMediaBudget} onChange={(e) => setPaidMediaBudget(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" required min="100" />
-            </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="startDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Start Date</label>
@@ -233,9 +250,44 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
             </div>
           </div>
           
-          <div>
-            <label htmlFor="landingPageUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Landing Page URL</label>
-            <input type="url" id="landingPageUrl" value={landingPageUrl} onChange={(e) => setLandingPageUrl(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" required />
+           <div className="grid grid-cols-1 gap-6">
+            <div>
+              <label htmlFor="paidMediaBudget" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Paid Media Budget (S$)</label>
+              <input type="number" id="paidMediaBudget" value={paidMediaBudget} onChange={(e) => setPaidMediaBudget(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" required min="100" />
+            </div>
+          </div>
+          
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+             <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">Product & Destination</h3>
+             <div className="space-y-6">
+                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Product Information (Required)</p>
+                    <p className="text-xs text-slate-500 mb-4">Please provide either a product URL or upload a document describing your product. This is essential for analyzing competitors and defining audience segments.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Details URL</label>
+                            <input type="url" value={productDetailsUrl} onChange={(e) => setProductDetailsUrl(e.target.value)} placeholder="https://..." className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" />
+                          </div>
+                          <div>
+                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Details Document (PDF/TXT)</label>
+                              <div className="mt-1 flex items-center gap-2">
+                                <input ref={productDetailsDocInputRef} type="file" onChange={handleProductDetailsDocChange} accept={SUPPORTED_DOC_TYPES} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                                {productDetailsDocFile && (
+                                    <button type="button" onClick={removeProductDetailsDoc} className="text-red-500 hover:text-red-700" title="Remove file">
+                                      &times;
+                                    </button>
+                                )}
+                              </div>
+                          </div>
+                     </div>
+                 </div>
+
+                 <div>
+                    <label htmlFor="landingPageUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Landing Page URL (Optional)</label>
+                    <input type="url" id="landingPageUrl" value={landingPageUrl} onChange={(e) => setLandingPageUrl(e.target.value)} placeholder="https://..." className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" />
+                    <p className="mt-1 text-xs text-slate-500">If provided, this will be used for content generation.</p>
+                 </div>
+             </div>
           </div>
           
           <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
@@ -258,25 +310,7 @@ const Step1CampaignDetails: React.FC<Props> = ({ onNext }) => {
               </div>
 
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
-                   <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Assets (Optional)</h3>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Details URL</label>
-                        <input type="url" value={productDetailsUrl} onChange={(e) => setProductDetailsUrl(e.target.value)} placeholder="https://..." className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 dark:border-slate-600" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Details Document (PDF/TXT)</label>
-                          <div className="mt-1 flex items-center gap-2">
-                             <input ref={productDetailsDocInputRef} type="file" onChange={handleProductDetailsDocChange} accept={SUPPORTED_DOC_TYPES} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-                             {productDetailsDocFile && (
-                                <button type="button" onClick={removeProductDetailsDoc} className="text-red-500 hover:text-red-700" title="Remove file">
-                                   &times;
-                                </button>
-                             )}
-                          </div>
-                      </div>
-                   </div>
-                   <p className="text-xs text-slate-500 italic">Provide either a URL or a document for product details to generate competitor insights. If neither is provided, the landing page will be used.</p>
+                   <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Additional Assets (Optional)</h3>
                    
                    <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Product Image</label>

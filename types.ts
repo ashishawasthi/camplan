@@ -77,7 +77,7 @@ export interface Campaign {
   country: string;
   startDate: string;
   endDate: string;
-  landingPageUrl: string;
+  landingPageUrl?: string;
   paidMediaBudget: number;
   audienceSegments: AudienceSegment[];
   segmentSources?: GroundingSource[];

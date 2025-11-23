@@ -205,7 +205,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                             <div className="space-y-2">
                                                 {group.imagePrompts.map((prompt, i) => (
                                                     <div key={i} onClick={() => handleOptionChange(segmentIndex, realIndex, 'prompt', i)}
-                                                        className={`p-3 rounded border cursor-pointer text-sm transition-colors ${group.selectedPromptIndex === i ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20' : 'bg-slate-50 border-slate-200 hover:border-indigo-200'}`}>
+                                                        className={`p-3 rounded border cursor-pointer text-sm transition-colors ${group.selectedPromptIndex === i ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-500'}`}>
                                                         <div className="flex items-start">
                                                             <div className={`mt-0.5 w-3 h-3 rounded-full border flex-shrink-0 mr-2 ${group.selectedPromptIndex === i ? 'bg-indigo-600 border-indigo-600' : 'border-slate-400'}`}></div>
                                                             <span className="text-slate-700 dark:text-slate-300">{prompt}</span>
@@ -220,7 +220,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                             <div className="space-y-2">
                                                 {group.headlines.map((text, i) => (
                                                     <div key={i} onClick={() => handleOptionChange(segmentIndex, realIndex, 'headline', i)}
-                                                        className={`p-3 rounded border cursor-pointer text-sm transition-colors ${group.selectedHeadlineIndex === i ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20' : 'bg-slate-50 border-slate-200 hover:border-indigo-200'}`}>
+                                                        className={`p-3 rounded border cursor-pointer text-sm transition-colors ${group.selectedHeadlineIndex === i ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-500'}`}>
                                                         <div className="flex items-start">
                                                             <div className={`mt-0.5 w-3 h-3 rounded-full border flex-shrink-0 mr-2 ${group.selectedHeadlineIndex === i ? 'bg-indigo-600 border-indigo-600' : 'border-slate-400'}`}></div>
                                                             <span className="text-slate-700 dark:text-slate-300">"{text}"</span>
@@ -254,7 +254,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                     {group.generatedCreative?.isGenerating || group.generatedCreative?.imageUrl ? (
                                         <div className="mt-4 pt-2 border-t border-slate-100 dark:border-slate-700 flex-grow flex flex-col justify-end">
                                             {group.generatedCreative?.isGenerating ? (
-                                                <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-indigo-100">
+                                                <div className="text-center py-8 bg-slate-50 rounded-lg border-2 border-dashed border-indigo-100 dark:bg-slate-800/30 dark:border-slate-700">
                                                     <SparklesIcon className="h-8 w-8 text-indigo-500 animate-pulse mx-auto mb-2" />
                                                     <p className="text-sm text-slate-500">Generating preview...</p>
                                                 </div>
@@ -280,7 +280,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                                         <div className="flex justify-end mt-2">
                                             <button 
                                                 onClick={() => handleGenerateImage(segmentIndex, realIndex)} 
-                                                className="p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                                className="p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-900/30 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
                                                 title="Generate Preview"
                                                 aria-label="Generate Preview"
                                             >
