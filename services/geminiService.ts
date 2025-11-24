@@ -442,6 +442,7 @@ export const getOwnedMediaAnalysis = async (
     segments: AudienceSegment[],
     importantCustomers?: string,
     customerSegment?: string,
+    instructions?: string
 ): Promise<OwnedMediaAnalysis> => {
     const segmentNames = segments.map(s => s.name).join(', ');
     let prompt = `
@@ -452,6 +453,8 @@ export const getOwnedMediaAnalysis = async (
 
         Determine if we should use owned channels to reach existing customers within these segments.
         Provide a recommendation, justification, and specific tactical ideas.
+
+        ${instructions ? `Additional User Instructions: ${instructions}` : ''}
 
         Output JSON:
         {

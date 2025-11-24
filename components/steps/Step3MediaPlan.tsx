@@ -26,6 +26,7 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
   const [isLoadingOwned, setIsLoadingOwned] = useState(false);
   const [viewingConfigFor, setViewingConfigFor] = useState<number | null>(null); // Index of segment
   const [showRegenModal, setShowRegenModal] = useState(false);
+  const [showOwnedRegenModal, setShowOwnedRegenModal] = useState(false);
   const [ownedMediaError, setOwnedMediaError] = useState<string | null>(null);
 
   // Refs for accessing latest props in async callbacks
@@ -106,7 +107,7 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
     }
   }, [setCampaign, setError]);
 
-  const fetchOwnedMedia = useCallback(async () => {
+  const fetchOwnedMedia = useCallback(async (instructions?: string) => {
     setIsLoadingOwned(true);
     setOwnedMediaError(null);
     try {
@@ -116,6 +117,7 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
             currentCampaign.audienceSegments,
             currentCampaign.importantCustomers,
             currentCampaign.customerSegment,
+            instructions
         );
         // Access ref again after await to ensure we are merging into latest state
         setCampaign({ ...campaignRef.current, ownedMediaAnalysis: analysis});
@@ -149,7 +151,11 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
   const handleRegenerate = async (instructions: string) => {
     setShowRegenModal(false);
     fetchBudgetSplit(instructions);
-    fetchOwnedMedia();
+  };
+
+  const handleOwnedRegenerate = async (instructions: string) => {
+    setShowOwnedRegenModal(false);
+    fetchOwnedMedia(instructions);
   };
 
   const handleUpdateSplit = (segmentIndex: number, channelName: string, newPercentage: number) => {
@@ -364,13 +370,13 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">Owned Media Analysis</h3>
                 {campaign.ownedMediaAnalysis && !isLoadingOwned && (
-                     <Button variant="ghost" onClick={fetchOwnedMedia} className="!py-1 !px-2 text-xs"><SparklesIcon className="w-3 h-3 mr-1" /> Regenerate</Button>
+                     <Button variant="ghost" onClick={() => setShowOwnedRegenModal(true)} className="!py-1 !px-2 text-xs"><SparklesIcon className="w-3 h-3 mr-1" /> Regenerate</Button>
                 )}
               </div>
                 {isLoadingOwned ? <Loader text="Analyzing owned media..." /> : ownedMediaError ? (
                      <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
                         <p className="text-red-600 mb-2">Analysis Failed: {ownedMediaError}</p>
-                        <Button variant="secondary" onClick={fetchOwnedMedia}>Retry</Button>
+                        <Button variant="secondary" onClick={() => fetchOwnedMedia()}>Retry</Button>
                      </div>
                 ) : campaign.ownedMediaAnalysis && (
                     <div className="p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -390,6 +396,7 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
       )}
       
       {showRegenModal && <RegenerateModal title="Regenerate Media Plan" onClose={() => setShowRegenModal(false)} onGenerate={handleRegenerate} isLoading={isLoadingPaid} />}
+      {showOwnedRegenModal && <RegenerateModal title="Regenerate Owned Media Analysis" onClose={() => setShowOwnedRegenModal(false)} onGenerate={handleOwnedRegenerate} isLoading={isLoadingOwned} />}
       
       {viewingConfigFor !== null && campaign.audienceSegments[viewingConfigFor]?.channelConfigs && (
           <ChannelConfigModal 

@@ -22,6 +22,7 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [editingCreative, setEditingCreative] = useState<{ segmentIndex: number; groupIndex: number; creative: Creative; aspectRatio: '1:1' | '9:16' | '16:9' } | null>(null);
   const [regenState, setRegenState] = useState<{ segmentIndex: number; groupIndex: number } | null>(null);
+  const [strategyRegenIndex, setStrategyRegenIndex] = useState<number | null>(null);
 
   // On mount, check if strategies exist. If not, generate them.
   useEffect(() => {
@@ -74,6 +75,43 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
     };
     generateStrategies();
   }, []); // Run once on mount
+
+  const handleRegenerateStrategy = async (instructions: string) => {
+      if (strategyRegenIndex === null) return;
+      
+      const segmentIndex = strategyRegenIndex;
+      setStrategyRegenIndex(null);
+      setIsAnalyzing(true);
+      setError(null);
+
+      try {
+          const updatedSegments = [...campaign.audienceSegments];
+          const segment = updatedSegments[segmentIndex];
+
+          const activeChannels = segment.mediaSplit?.filter(m => m.budget > 0).map(m => m.channel) || [];
+          if (campaign.ownedMediaAnalysis?.isApplicable && campaign.ownedMediaAnalysis.recommendedChannels) {
+               activeChannels.push(...campaign.ownedMediaAnalysis.recommendedChannels);
+          }
+
+          // Force regeneration even if groups exist
+          const groups = await generateCreativeStrategy(
+                 segment, 
+                 activeChannels, 
+                 `Product: ${campaign.campaignName}. Values: ${campaign.brandValues || 'N/A'}. Target Country: ${campaign.country}.`,
+                 instructions
+          );
+          
+          const initializedGroups = groups.map(g => ({ ...g, selectedPromptIndex: 0, selectedHeadlineIndex: 0 }));
+          updatedSegments[segmentIndex] = { ...segment, creativeGroups: initializedGroups };
+          
+          setCampaign({ ...campaign, audienceSegments: updatedSegments });
+
+      } catch (e) {
+          setError("Failed to regenerate content strategy.");
+      } finally {
+          setIsAnalyzing(false);
+      }
+  }
 
   const handleGenerateImage = async (segmentIndex: number, groupIndex: number, instructions?: string) => {
     setError(null);
@@ -171,7 +209,13 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
 
                 return (
                     <div key={segmentIndex} className="border-b border-slate-200 dark:border-slate-700 pb-12 last:border-0">
-                        <h3 className="text-2xl font-bold text-indigo-700 dark:text-indigo-400 mb-2">{segment.name}</h3>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{segment.name}</h3>
+                            <Button variant="ghost" onClick={() => setStrategyRegenIndex(segmentIndex)} className="text-sm">
+                                <SparklesIcon className="w-4 h-4 mr-2" />
+                                Regenerate Concepts
+                            </Button>
+                        </div>
                         
                         {segment.imageSearchKeywords && segment.imageSearchKeywords.length > 0 && (
                             <div className="mb-6 flex flex-wrap items-center gap-2">
@@ -326,6 +370,14 @@ const Step4ContentStrategy: React.FC<Props> = ({ campaign, setCampaign, error, s
                 setRegenState(null);
             }} 
           />
+      )}
+      {strategyRegenIndex !== null && (
+         <RegenerateModal 
+            title={`Regenerate Concepts: ${campaign.audienceSegments[strategyRegenIndex].name}`} 
+            onClose={() => setStrategyRegenIndex(null)} 
+            isLoading={isAnalyzing} 
+            onGenerate={handleRegenerateStrategy} 
+         />
       )}
     </div>
   );
