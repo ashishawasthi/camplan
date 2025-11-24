@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Campaign } from '../../types';
-import { getBudgetSplit, getOwnedMediaAnalysis } from '../../services/geminiService';
+import { getBudgetSplit, getOwnedMediaAnalysis, generateChannelConfigs } from '../../services/geminiService';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
 import Card from '../common/Card';
 import RegenerateModal from '../common/RegenerateModal';
+import ChannelConfigModal from '../ChannelConfigModal';
 import { SparklesIcon } from '../icons/SparklesIcon';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 
@@ -22,6 +23,8 @@ const SUPPORTED_CHANNELS = ['Facebook', 'Instagram', 'Google Search', 'Google Di
 const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [isLoadingPaid, setIsLoadingPaid] = useState(false);
   const [isLoadingOwned, setIsLoadingOwned] = useState(false);
+  const [generatingConfigFor, setGeneratingConfigFor] = useState<number | null>(null); // Index of segment
+  const [viewingConfigFor, setViewingConfigFor] = useState<number | null>(null); // Index of segment
   const [showRegenModal, setShowRegenModal] = useState(false);
   const [ownedMediaError, setOwnedMediaError] = useState<string | null>(null);
 
@@ -123,6 +126,27 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
         setIsLoadingOwned(false);
     }
   }, [setCampaign]);
+
+  const handleGenerateConfigs = async (segmentIndex: number) => {
+      const segment = campaign.audienceSegments[segmentIndex];
+      // Get channels with non-zero budget
+      const channels = segment.mediaSplit?.filter(m => m.budget > 0).map(m => m.channel) || [];
+      if (channels.length === 0) return;
+
+      setGeneratingConfigFor(segmentIndex);
+      try {
+          const configs = await generateChannelConfigs(segment, channels, campaign.country);
+          const newSegments = [...campaign.audienceSegments];
+          newSegments[segmentIndex] = { ...segment, channelConfigs: configs };
+          setCampaign({ ...campaign, audienceSegments: newSegments });
+          setViewingConfigFor(segmentIndex); // Auto open
+      } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          setError(`Failed to generate channel configs: ${message}`);
+      } finally {
+          setGeneratingConfigFor(null);
+      }
+  };
 
   useEffect(() => {
     if (!campaign.audienceSegments.some(s => s.budget)) fetchBudgetSplit();
@@ -244,7 +268,9 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
                  const segmentBudget = segment.budget || 0;
                  const currentAllocated = segment.mediaSplit?.reduce((sum, m) => sum + m.budget, 0) || 0;
                  const unallocated = segmentBudget - currentAllocated;
-                 
+                 const hasAllocatedChannels = (segment.mediaSplit?.filter(m => m.budget > 0).length || 0) > 0;
+                 const isGeneratingConfig = generatingConfigFor === index;
+
                  return (
                   <div key={index} className={`p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-l-4 ${colors[index % colors.length]}`}>
                     <div className="flex justify-between items-center mb-2">
@@ -267,7 +293,7 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
                          )}
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 mb-4">
                         {SUPPORTED_CHANNELS.map((channel) => {
                             const mediaItem = segment.mediaSplit?.find(m => m.channel === channel);
                             const budget = mediaItem ? mediaItem.budget : 0;
@@ -314,13 +340,34 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
                     </div>
                     
                     {unallocated > 5 && (
-                        <div className="mt-4 pt-2 border-t border-slate-200 dark:border-slate-700 text-center">
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-center mb-4">
                             <button 
                                 onClick={() => distributeRemaining(index)}
                                 className="text-xs text-indigo-600 hover:text-indigo-800 font-medium underline"
                             >
                                 Distribute Remaining Budget (${unallocated.toLocaleString()})
                             </button>
+                        </div>
+                    )}
+                    
+                    {/* Targeting JSON Export */}
+                    {hasAllocatedChannels && segment.targeting && (
+                        <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+                            {segment.channelConfigs ? (
+                                <Button variant="secondary" onClick={() => setViewingConfigFor(index)} className="text-xs !py-1 !px-3">
+                                    View Channel Configs
+                                </Button>
+                            ) : (
+                                <Button 
+                                    variant="ghost" 
+                                    onClick={() => handleGenerateConfigs(index)} 
+                                    isLoading={isGeneratingConfig}
+                                    className="text-xs !py-1 !px-3"
+                                >
+                                    <SparklesIcon className="w-3 h-3 mr-1" />
+                                    {isGeneratingConfig ? "Generating Configs..." : "Generate Targeting JSON"}
+                                </Button>
+                            )}
                         </div>
                     )}
                   </div>
@@ -359,6 +406,15 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
       )}
       
       {showRegenModal && <RegenerateModal title="Regenerate Media Plan" onClose={() => setShowRegenModal(false)} onGenerate={handleRegenerate} isLoading={isLoadingPaid} />}
+      
+      {viewingConfigFor !== null && campaign.audienceSegments[viewingConfigFor]?.channelConfigs && (
+          <ChannelConfigModal 
+            segmentName={campaign.audienceSegments[viewingConfigFor].name}
+            configs={campaign.audienceSegments[viewingConfigFor].channelConfigs!}
+            onClose={() => setViewingConfigFor(null)}
+          />
+      )}
+      
       {!isLoadingPaid && budgetIsSet && <div className="mt-8 flex justify-end"><Button onClick={onNext}>Content Strategy</Button></div>}
     </Card>
   );

@@ -20,12 +20,30 @@ export interface CreativeGroup {
     selectedHeadlineIndex?: number;
 }
 
+export interface AudienceTargeting {
+  ageRange: string;
+  genders: string[];
+  locations: string[];
+  interests: string[];
+  behaviors: string[];
+  jobTitles?: string[];
+  incomeLevel?: string;
+  parentalStatus?: string;
+  educationLevel?: string;
+}
+
 export interface AudienceSegment {
   name: string;
   description: string;
   penPortrait: string;
   keyMotivations: string[];
   imageSearchKeywords: string[];
+  
+  // Structured targeting data
+  targeting?: AudienceTargeting;
+  // Generated channel-specific JSON configs
+  channelConfigs?: Record<string, any>;
+
   // Legacy fields (optional now, as we generate in step 4)
   imagePrompts?: string[]; 
   notificationTexts?: string[]; 

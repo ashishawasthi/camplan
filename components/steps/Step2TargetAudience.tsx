@@ -190,7 +190,7 @@ const Step2TargetAudience: React.FC<Props> = ({ campaign, setCampaign, onNext, e
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {campaign.audienceSegments.map((segment, index) => (
                 <Card key={index} className="flex flex-col relative">
-                   <div className="absolute top-4 right-4">
+                   <div className="absolute top-4 right-4 z-10">
                     <input type="checkbox" checked={segment.isSelected ?? false} onChange={() => handleToggleSegment(index)} className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
                   </div>
                   <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 pr-8 mb-2">{segment.name}</h3>
@@ -200,15 +200,50 @@ const Step2TargetAudience: React.FC<Props> = ({ campaign, setCampaign, onNext, e
                        <button onClick={() => setEditingState({ index, field: 'description', value: segment.description })} className="absolute top-0 right-0 p-1 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"><PencilIcon className="h-4 w-4" /></button>
                   </div>
                   
+                  {segment.targeting && (
+                     <div className="mb-4 bg-indigo-50 dark:bg-slate-800/80 rounded-md p-3 text-xs space-y-2 border border-indigo-100 dark:border-slate-700">
+                        <h4 className="font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider mb-1">Targeting Profile</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                             <div>
+                                 <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase">Age</span>
+                                 <span className="text-slate-700 dark:text-slate-200 font-medium">{segment.targeting.ageRange}</span>
+                             </div>
+                             <div>
+                                 <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase">Gender</span>
+                                 <span className="text-slate-700 dark:text-slate-200 font-medium">{segment.targeting.genders.join(', ')}</span>
+                             </div>
+                        </div>
+                        {segment.targeting.locations && segment.targeting.locations.length > 0 && (
+                            <div>
+                                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase">Locations</span>
+                                <span className="text-slate-700 dark:text-slate-200">{segment.targeting.locations.join(', ')}</span>
+                            </div>
+                        )}
+                        {segment.targeting.interests && (
+                            <div>
+                                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase">Interests</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {segment.targeting.interests.slice(0, 5).map((interest, i) => (
+                                        <span key={i} className="inline-block px-1.5 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-slate-600 dark:text-slate-300">
+                                            {interest}
+                                        </span>
+                                    ))}
+                                    {segment.targeting.interests.length > 5 && <span className="text-slate-400 pl-1">+{segment.targeting.interests.length - 5}</span>}
+                                </div>
+                            </div>
+                        )}
+                     </div>
+                  )}
+
                   {segment.penPortrait && (
-                    <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 relative group">
+                    <div className="mt-auto p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 relative group">
                         <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Pen Portrait</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-300">{segment.penPortrait}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 italic">"{segment.penPortrait}"</p>
                         <button onClick={() => setEditingState({ index, field: 'penPortrait', value: segment.penPortrait })} className="absolute top-2 right-2 p-1 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"><PencilIcon className="h-4 w-4" /></button>
                     </div>
                   )}
                   
-                   <div className="mt-4 flex-grow">
+                   <div className="mt-4">
                     <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">Key Motivations</h4>
                     <ul className="list-disc list-inside text-sm text-slate-500 dark:text-slate-400 space-y-1">
                       {segment.keyMotivations.map((m, i) => <li key={i}>{m}</li>)}
