@@ -85,6 +85,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources })
 
   lines.forEach((line, index) => {
     // Headings
+    if (line.startsWith('#### ')) {
+      flushList();
+      elements.push(<h6 key={index} className="font-semibold text-slate-700 dark:text-slate-300 mt-2 mb-1 text-sm uppercase tracking-wide">{parseInlineMarkdown(line.substring(5), sources)}</h6>);
+      return;
+    }
     if (line.startsWith('### ')) {
       flushList();
       elements.push(<h5 key={index} className="font-semibold text-slate-700 dark:text-slate-300 mt-3 mb-1">{parseInlineMarkdown(line.substring(4), sources)}</h5>);
