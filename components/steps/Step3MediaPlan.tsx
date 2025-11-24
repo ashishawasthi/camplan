@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Campaign } from '../../types';
-import { getBudgetSplit, getOwnedMediaAnalysis, generateChannelConfigs } from '../../services/geminiService';
+import { getBudgetSplit, getOwnedMediaAnalysis } from '../../services/geminiService';
+import { generatePlatformConfigs } from '../../services/targetingMapper';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
 import Card from '../common/Card';
@@ -23,7 +24,6 @@ const SUPPORTED_CHANNELS = ['Facebook', 'Instagram', 'Google Search', 'Google Di
 const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error, setError }) => {
   const [isLoadingPaid, setIsLoadingPaid] = useState(false);
   const [isLoadingOwned, setIsLoadingOwned] = useState(false);
-  const [generatingConfigFor, setGeneratingConfigFor] = useState<number | null>(null); // Index of segment
   const [viewingConfigFor, setViewingConfigFor] = useState<number | null>(null); // Index of segment
   const [showRegenModal, setShowRegenModal] = useState(false);
   const [ownedMediaError, setOwnedMediaError] = useState<string | null>(null);
@@ -127,25 +127,18 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
     }
   }, [setCampaign]);
 
-  const handleGenerateConfigs = async (segmentIndex: number) => {
+  const handleViewConfigs = (segmentIndex: number) => {
+      // Rule-based generation is instant, so we generate on the fly if not present or just always refresh
       const segment = campaign.audienceSegments[segmentIndex];
-      // Get channels with non-zero budget
       const channels = segment.mediaSplit?.filter(m => m.budget > 0).map(m => m.channel) || [];
-      if (channels.length === 0) return;
-
-      setGeneratingConfigFor(segmentIndex);
-      try {
-          const configs = await generateChannelConfigs(segment, channels, campaign.country);
+      
+      if (channels.length > 0) {
+          const configs = generatePlatformConfigs(segment.targeting, channels, campaign.country);
           const newSegments = [...campaign.audienceSegments];
           newSegments[segmentIndex] = { ...segment, channelConfigs: configs };
           setCampaign({ ...campaign, audienceSegments: newSegments });
-          setViewingConfigFor(segmentIndex); // Auto open
-      } catch (err) {
-          const message = err instanceof Error ? err.message : 'Unknown error';
-          setError(`Failed to generate channel configs: ${message}`);
-      } finally {
-          setGeneratingConfigFor(null);
       }
+      setViewingConfigFor(segmentIndex);
   };
 
   useEffect(() => {
@@ -269,7 +262,6 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
                  const currentAllocated = segment.mediaSplit?.reduce((sum, m) => sum + m.budget, 0) || 0;
                  const unallocated = segmentBudget - currentAllocated;
                  const hasAllocatedChannels = (segment.mediaSplit?.filter(m => m.budget > 0).length || 0) > 0;
-                 const isGeneratingConfig = generatingConfigFor === index;
 
                  return (
                   <div key={index} className={`p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border-l-4 ${colors[index % colors.length]}`}>
@@ -353,21 +345,13 @@ const Step3MediaPlan: React.FC<Props> = ({ campaign, setCampaign, onNext, error,
                     {/* Targeting JSON Export */}
                     {hasAllocatedChannels && segment.targeting && (
                         <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-                            {segment.channelConfigs ? (
-                                <Button variant="secondary" onClick={() => setViewingConfigFor(index)} className="text-xs !py-1 !px-3">
-                                    View Channel Configs
-                                </Button>
-                            ) : (
-                                <Button 
-                                    variant="ghost" 
-                                    onClick={() => handleGenerateConfigs(index)} 
-                                    isLoading={isGeneratingConfig}
-                                    className="text-xs !py-1 !px-3"
-                                >
-                                    <SparklesIcon className="w-3 h-3 mr-1" />
-                                    {isGeneratingConfig ? "Generating Configs..." : "Generate Targeting JSON"}
-                                </Button>
-                            )}
+                            <Button 
+                                variant="secondary" 
+                                onClick={() => handleViewConfigs(index)} 
+                                className="text-xs !py-1 !px-3"
+                            >
+                                View Channel Configs
+                            </Button>
                         </div>
                     )}
                   </div>

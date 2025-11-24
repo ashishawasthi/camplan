@@ -66,7 +66,7 @@ export const getAudienceSegments = async (
     4. A "rationale" explaining your reasoning, referencing specific insights.
     5. A list of their key motivations for products in this category.
     6. A list of 5-7 concise keywords for searching an existing internal ad image repository (as 'imageSearchKeywords').
-    7. **Crucial**: A structured "targeting" object containing precise targeting parameters that could be used in ad platforms (e.g., Facebook Ads Manager, Google Ads).
+    7. **Crucial**: A structured "targeting" object containing precise targeting parameters that will be used for rule-based mapping to ad platforms (Facebook, Google). ensure 'ageRange' uses a strict "Min-Max" format (e.g. "18-35") or "Min+" format (e.g. "25+").
     
     Note: We will generate specific creative prompts in a later step, so focus here on the deep understanding of the audience.
   `;
@@ -114,11 +114,11 @@ export const getAudienceSegments = async (
       "keyMotivations": ["string"],
       "imageSearchKeywords": ["string"],
       "targeting": {
-         "ageRange": "string (e.g. 18-35)",
-         "genders": ["string"],
-         "locations": ["string"],
-         "interests": ["string"],
-         "behaviors": ["string"],
+         "ageRange": "string (Strictly 'Min-Max' format e.g. '18-35', or 'Min+' e.g. '21+')",
+         "genders": ["string (e.g. 'Male', 'Female', 'All')"],
+         "locations": ["string (Country or Cities)"],
+         "interests": ["string (Specific interest keywords, e.g. 'Sustainable Living', 'Fintech')"],
+         "behaviors": ["string (Specific behaviors, e.g. 'Frequent Travelers', 'Online Shoppers')"],
          "jobTitles": ["string"],
          "incomeLevel": "string",
          "educationLevel": "string",
@@ -140,9 +140,9 @@ export const getAudienceSegments = async (
   }
 
   try {
-    // Do NOT use responseMimeType with tools, as it is often unsupported/conflicts.
+    // Upgraded to gemini-3-pro-preview for complex reasoning and better structured output
     const response = await runGenerateContent({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-3-pro-preview',
       contents: { parts },
       config: { tools: [{googleSearch: {}}] }
     });
@@ -234,61 +234,6 @@ export const generateCreativeStrategy = async (
         throw new Error("Failed to generate creative strategy.");
     }
 }
-
-export const generateChannelConfigs = async (
-    segment: AudienceSegment,
-    channels: string[],
-    country: string
-): Promise<Record<string, any>> => {
-    if (!segment.targeting) {
-        throw new Error("Segment targeting data is missing.");
-    }
-    
-    // Clean up channel list
-    const activeChannels = channels.filter(c => c && c.length > 0);
-    if (activeChannels.length === 0) return {};
-
-    let prompt = `
-        Act as an Ad Operations Specialist and API Engineer.
-        
-        Task: Map the provided abstract audience profile into specific, valid JSON targeting payloads for the requested advertising platforms.
-        
-        Audience Profile:
-        ${JSON.stringify(segment.targeting, null, 2)}
-        
-        Country Context: ${country}
-        
-        Requested Channels: ${activeChannels.join(', ')}
-        
-        For each requested channel, provide the specific JSON object structure used in that platform's API for targeting.
-        - For "Facebook" or "Instagram", use the Facebook Marketing API "targeting" spec (flexible_spec, geo_locations, etc.).
-        - For "Google Search" or "Google Display" or "YouTube", use the Google Ads API criterion structure (CriterionUserList, AgeRangeInfo, GenderInfo, UserInterestInfo, LocationInfo).
-        - For "LinkedIn", use the LinkedIn Ads API targeting criteria (adTargetingSegments).
-        - For "TikTok", use the TikTok Ads API audience targeting structure.
-        
-        If precise IDs (like Interest IDs) are not available, use the descriptive name (e.g., "Interest: Technology") as a placeholder value, but maintain the correct JSON keys/structure.
-        
-        Output MUST be a single JSON object where keys are the Channel Names (from the requested list) and values are the JSON targeting objects.
-        Example:
-        {
-            "Facebook": { "geo_locations": { ... }, "age_min": ... },
-            "Google Search": { ... }
-        }
-    `;
-
-    try {
-        const response = await runGenerateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: { responseMimeType: 'application/json' }
-        });
-        const jsonText = extractJson(response.text);
-        return JSON.parse(jsonText);
-    } catch (error) {
-        console.error("Error generating channel configs:", error);
-        throw new Error("Failed to generate channel targeting configurations.");
-    }
-};
 
 export const generateImage = async (prompt: string, aspectRatio: '1:1' | '9:16' | '16:9' = '1:1', instructions?: string): Promise<{ base64: string; mimeType: string }> => {
   let fullPrompt = `${prompt}. High resolution, photorealistic, professional advertising photography, highly detailed, cinematic lighting.`;
@@ -467,9 +412,9 @@ export const getBudgetSplit = async (
     `;
 
     try {
-        // Do NOT use responseMimeType with tools, as it is often unsupported/conflicts.
+        // Upgraded to gemini-3-pro-preview for complex reasoning
         const response = await runGenerateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-3-pro-preview',
             contents: prompt,
             config: { 
                 tools: [{googleSearch: {}}] 
