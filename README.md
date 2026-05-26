@@ -1,10 +1,9 @@
 # Campaign Planner
 
-## Run and deploy your AI Studio app
+Generative AI demo for end to end campaign planning, from market analysis to creatives and paid/owned campaign budget allocation.
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/14x0hy7v9WULBiUI44NOLNf5a_IFjL-6X
+Built with AI Studio
+AI Studio: https://ai.studio/apps/drive/14x0hy7v9WULBiUI44NOLNf5a_IFjL-6X
 
 ## Run Locally
 
