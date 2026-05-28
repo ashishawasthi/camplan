@@ -2,8 +2,10 @@
 
 Generative AI demo for end to end campaign planning, from market analysis to creatives and paid/owned campaign budget allocation.
 
-Built with AI Studio
-AI Studio: https://ai.studio/apps/drive/14x0hy7v9WULBiUI44NOLNf5a_IFjL-6X
+## Built with AI Studio
+
+Hosting: https://campaign-planner-708214089226.us-west1.run.app
+Dev URL: https://ai.studio/apps/drive/14x0hy7v9WULBiUI44NOLNf5a_IFjL-6X
 
 ## Run Locally
 
